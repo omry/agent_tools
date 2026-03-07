@@ -75,6 +75,8 @@ Run the server:
 mcp-server
 ```
 
+`mcp-server` is only a placeholder command name in this stub. Rename the package, script entry in `pyproject.toml`, and `server.name` before using this as a real server.
+
 Default local test mode is HTTP:
 
 - transport: `streamable-http`
