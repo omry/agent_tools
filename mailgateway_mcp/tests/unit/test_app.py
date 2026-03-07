@@ -90,3 +90,26 @@ def test_send_email_requires_body_content() -> None:
             to=["to@example.com"],
             subject="Missing body",
         )
+
+
+def test_send_email_supports_html_only_body() -> None:
+    smtp_client = FakeSmtpClient()
+    app = MailGatewayApp(
+        AppConfig(
+            smtp=SmtpConfig(
+                from_email="agent@example.com",
+                from_name="Agent MailGateway",
+            )
+        ),
+        smtp_client=smtp_client,
+    )
+
+    app.send_email(
+        to=["to@example.com"],
+        subject="Hello",
+        html_body="<p>HTML only</p>",
+    )
+
+    assert smtp_client.message.get_content_type() == "text/html"
+    assert smtp_client.message.is_multipart() is False
+    assert "<p>HTML only</p>" in smtp_client.message.get_content()

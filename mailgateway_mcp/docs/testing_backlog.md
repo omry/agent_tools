@@ -66,7 +66,8 @@ This file tracks the highest-value gaps between:
 - HTML-only message serialization
   - Why: MIME behavior is user-visible
   - Level: unit + integration
-  - Status: `todo`
+  - Status: `done`
+  - Coverage: `tests/unit/test_app.py`, `tests/integration/test_smtp_integration.py`
 
 - Non-ASCII subject and display-name handling
   - Why: common real-world interoperability case
