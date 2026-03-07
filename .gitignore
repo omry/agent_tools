@@ -6,3 +6,4 @@ __pycache__/
 build/
 dist/
 outputs/
+mailgateway_mcp/src/mailgateway_mcp/conf/real_config.yaml

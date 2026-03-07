@@ -9,12 +9,6 @@ from .config import AppConfigLike
 
 
 @dataclass(frozen=True)
-class HelloResult:
-    tool: str
-    message: str
-
-
-@dataclass(frozen=True)
 class SendEmailResult:
     tool: str
     message_id: str
@@ -34,14 +28,7 @@ class MailGatewayApp:
         self._smtp_client = smtp_client
 
     def tool_names(self) -> list[str]:
-        return ["hello", "send_email"]
-
-    def hello(self, name: str | None = None) -> HelloResult:
-        target = name or self._config.hello.default_name
-        return HelloResult(
-            tool="hello",
-            message=f"{self._config.hello.greeting}, {target}!",
-        )
+        return ["send_email"]
 
     def send_email(
         self,

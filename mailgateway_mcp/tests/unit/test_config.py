@@ -24,8 +24,6 @@ def test_compose_config_returns_hydra_config() -> None:
     assert cfg.smtp.port == 587
     assert cfg.smtp.from_email == "agent@example.com"
     assert cfg.smtp.verify_peer is True
-    assert cfg.hello.greeting == "Hello"
-    assert cfg.hello.default_name == "world"
 
 
 def test_compose_config_applies_overrides() -> None:
@@ -35,9 +33,8 @@ def test_compose_config_applies_overrides() -> None:
             "server.port=9000",
             "smtp.host=smtp.example.com",
             "smtp.port=2525",
+            "smtp.from_name=Agent Team",
             "smtp.verify_peer=false",
-            "hello.greeting=Hi",
-            "hello.default_name=team",
         ]
     )
 
@@ -45,16 +42,15 @@ def test_compose_config_applies_overrides() -> None:
     assert cfg.server.port == 9000
     assert cfg.smtp.host == "smtp.example.com"
     assert cfg.smtp.port == 2525
+    assert cfg.smtp.from_name == "Agent Team"
     assert cfg.smtp.verify_peer is False
-    assert cfg.hello.greeting == "Hi"
-    assert cfg.hello.default_name == "team"
 
 
 def test_hydra_config_preserves_lazy_interpolations() -> None:
-    app_config = _compose_config(["hello.default_name=${server.name}"])
+    app_config = _compose_config(["smtp.from_name=${server.name}"])
 
     assert app_config.server.name == "mailgateway-mcp"
-    assert app_config.hello.default_name == "mailgateway-mcp"
+    assert app_config.smtp.from_name == "mailgateway-mcp"
 
 
 def test_smtp_config_rejects_mutually_exclusive_tls_modes() -> None:

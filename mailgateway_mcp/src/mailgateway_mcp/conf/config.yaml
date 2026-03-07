@@ -11,10 +11,6 @@ server:
   stateless_http: true
   json_response: true
 
-hello:
-  greeting: Hello
-  default_name: world
-
 smtp:
   host: localhost
   port: 587

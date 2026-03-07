@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
 import hydra
+from pydantic import Field
 
 from .app import MailGatewayApp
 from .config import AppConfigLike, register_configs
@@ -10,6 +11,48 @@ from .smtp import SmtpSubmissionClient
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+
+RecipientList = Annotated[
+    list[str],
+    Field(
+        description="JSON array of recipient email addresses.",
+        examples=[["to@example.com"]],
+    ),
+]
+
+OptionalRecipientList = Annotated[
+    list[str] | None,
+    Field(
+        description="Optional JSON array of recipient email addresses.",
+        examples=[["person@example.com"]],
+    ),
+]
+
+SubjectLine = Annotated[
+    str,
+    Field(
+        description="Email subject line.",
+        examples=["Hello from MCP"],
+        min_length=1,
+    ),
+]
+
+TextBody = Annotated[
+    str | None,
+    Field(
+        description="Optional plain-text body. Provide this or html_body.",
+        examples=["Plain text message body."],
+    ),
+]
+
+HtmlBody = Annotated[
+    str | None,
+    Field(
+        description="Optional HTML body. Provide this or text_body.",
+        examples=["<p>Hello from MCP</p>"],
+    ),
+]
 
 
 def build_app(cfg: AppConfigLike) -> MailGatewayApp:
@@ -29,18 +72,20 @@ def build_server(cfg: AppConfigLike) -> "FastMCP":
     server.settings.port = cfg.server.port
     server.settings.streamable_http_path = cfg.server.path
 
-    @server.tool()
-    def hello(name: str | None = None) -> str:
-        return app.hello(name).message
-
-    @server.tool()
+    @server.tool(
+        description=(
+            "Send a single email message through the configured SMTP submission "
+            "server. Use JSON arrays for to, cc, and bcc. Provide at least one "
+            "recipient in to and at least one of text_body or html_body."
+        )
+    )
     def send_email(
-        to: list[str],
-        subject: str,
-        text_body: str | None = None,
-        html_body: str | None = None,
-        cc: list[str] | None = None,
-        bcc: list[str] | None = None,
+        to: RecipientList,
+        subject: SubjectLine,
+        text_body: TextBody = None,
+        html_body: HtmlBody = None,
+        cc: OptionalRecipientList = None,
+        bcc: OptionalRecipientList = None,
     ) -> dict[str, object]:
         result = app.send_email(
             to=to,

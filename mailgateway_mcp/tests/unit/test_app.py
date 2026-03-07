@@ -1,7 +1,7 @@
 import pytest
 
 from mailgateway_mcp.app import MailGatewayApp
-from mailgateway_mcp.config import AppConfig, HelloConfig, ServerConfig, SmtpConfig
+from mailgateway_mcp.config import AppConfig, SmtpConfig
 
 
 class FakeSmtpClient:
@@ -16,34 +16,10 @@ class FakeSmtpClient:
         self.recipients = recipients
 
 
-def test_tool_names_contains_hello() -> None:
+def test_tool_names_contains_send_email() -> None:
     app = MailGatewayApp(AppConfig(), smtp_client=FakeSmtpClient())
 
-    assert app.tool_names() == ["hello", "send_email"]
-
-
-def test_hello_uses_default_name_from_config() -> None:
-    app = MailGatewayApp(
-        AppConfig(
-            server=ServerConfig(name="mailgateway-mcp"),
-            hello=HelloConfig(greeting="Hello", default_name="world"),
-            smtp=SmtpConfig(from_email="agent@example.com"),
-        ),
-        smtp_client=FakeSmtpClient(),
-    )
-
-    result = app.hello()
-
-    assert result.tool == "hello"
-    assert result.message == "Hello, world!"
-
-
-def test_hello_accepts_explicit_name() -> None:
-    app = MailGatewayApp(AppConfig(), smtp_client=FakeSmtpClient())
-
-    result = app.hello("Omry")
-
-    assert result.message == "Hello, Omry!"
+    assert app.tool_names() == ["send_email"]
 
 
 def test_send_email_submits_message_and_excludes_bcc_header() -> None:

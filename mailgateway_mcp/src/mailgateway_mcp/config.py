@@ -18,12 +18,6 @@ class ServerConfig:
 
 
 @dataclass
-class HelloConfig:
-    greeting: str = "Hello"
-    default_name: str = "world"
-
-
-@dataclass
 class SmtpConfig:
     host: str = "localhost"
     port: int = 587
@@ -43,7 +37,6 @@ class SmtpConfig:
 @dataclass
 class AppConfig:
     server: ServerConfig = field(default_factory=ServerConfig)
-    hello: HelloConfig = field(default_factory=HelloConfig)
     smtp: SmtpConfig = field(default_factory=SmtpConfig)
 
 
@@ -55,11 +48,6 @@ class ServerConfigLike(Protocol):
     path: str
     stateless_http: bool
     json_response: bool
-
-
-class HelloConfigLike(Protocol):
-    greeting: str
-    default_name: str
 
 
 class SmtpConfigLike(Protocol):
@@ -77,7 +65,6 @@ class SmtpConfigLike(Protocol):
 
 class AppConfigLike(Protocol):
     server: ServerConfigLike
-    hello: HelloConfigLike
     smtp: SmtpConfigLike
 
 

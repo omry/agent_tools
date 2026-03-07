@@ -5,22 +5,47 @@ from types import SimpleNamespace
 import pytest
 from omegaconf import OmegaConf
 
-from mailgateway_mcp.config import AppConfig, HelloConfig
+from mailgateway_mcp.config import AppConfig
 from mailgateway_mcp.main import build_app, build_server
 
 
 def test_build_app_accepts_hydra_config() -> None:
-    cfg = OmegaConf.structured(
-        AppConfig(hello=HelloConfig(default_name="Hydra"))
-    )
+    cfg = OmegaConf.structured(AppConfig())
 
     app = build_app(cfg)
 
-    assert app.hello().message == "Hello, Hydra!"
+    assert app.tool_names() == ["send_email"]
 
 
-def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     tools: dict[str, object] = {}
+    send_email_calls: list[dict[str, object]] = []
+
+    class FakeApp:
+        def send_email(
+            self,
+            *,
+            to: list[str],
+            subject: str,
+            text_body: str | None = None,
+            html_body: str | None = None,
+            cc: list[str] | None = None,
+            bcc: list[str] | None = None,
+        ):
+            send_email_calls.append(
+                {
+                    "to": to,
+                    "subject": subject,
+                    "text_body": text_body,
+                    "html_body": html_body,
+                    "cc": cc,
+                    "bcc": bcc,
+                }
+            )
+            return SimpleNamespace(
+                message_id="<message-id@example.com>",
+                recipient_count=len(to) + len(cc or []) + len(bcc or []),
+            )
 
     class FakeFastMCP:
         def __init__(
@@ -40,7 +65,7 @@ def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> N
             )
             self.run_transport = None
 
-        def tool(self):
+        def tool(self, **kwargs):
             def decorator(func):
                 tools[func.__name__] = func
                 return func
@@ -58,10 +83,9 @@ def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setitem(sys.modules, "mcp", mcp_module)
     monkeypatch.setitem(sys.modules, "mcp.server", server_module)
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fastmcp_module)
+    monkeypatch.setattr("mailgateway_mcp.main.build_app", lambda cfg: FakeApp())
 
-    cfg = OmegaConf.structured(
-        AppConfig(hello=HelloConfig(default_name="Hydra"))
-    )
+    cfg = OmegaConf.structured(AppConfig())
 
     server = build_server(cfg)
 
@@ -71,7 +95,54 @@ def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> N
     assert server.settings.host == "127.0.0.1"
     assert server.settings.port == 8000
     assert server.settings.streamable_http_path == "/mcp"
-    assert "hello" in tools
     assert "send_email" in tools
-    assert tools["hello"]() == "Hello, Hydra!"
-    assert tools["hello"]("Omry") == "Hello, Omry!"
+
+    send_result = tools["send_email"](
+        to=["to@example.com"],
+        cc=["cc@example.com"],
+        bcc=["bcc@example.com"],
+        subject="Hello",
+        text_body="Plain body",
+    )
+
+    assert send_result == {
+        "ok": True,
+        "message_id": "<message-id@example.com>",
+        "recipient_count": 3,
+    }
+    assert send_email_calls == [
+        {
+            "to": ["to@example.com"],
+            "subject": "Hello",
+            "text_body": "Plain body",
+            "html_body": None,
+            "cc": ["cc@example.com"],
+            "bcc": ["bcc@example.com"],
+        }
+    ]
+
+
+def test_build_server_describes_send_email_tool_schema() -> None:
+    server = build_server(OmegaConf.structured(AppConfig()))
+
+    send_email_tool = server._tool_manager._tools["send_email"]
+    parameters = send_email_tool.parameters["properties"]
+
+    assert "configured SMTP submission server" in send_email_tool.description
+    assert parameters["to"]["type"] == "array"
+    assert parameters["to"]["description"] == "JSON array of recipient email addresses."
+    assert parameters["to"]["examples"] == [["to@example.com"]]
+    assert parameters["subject"]["type"] == "string"
+    assert parameters["subject"]["description"] == "Email subject line."
+    assert parameters["text_body"]["description"] == (
+        "Optional plain-text body. Provide this or html_body."
+    )
+    assert parameters["html_body"]["description"] == (
+        "Optional HTML body. Provide this or text_body."
+    )
+    assert parameters["cc"]["description"] == (
+        "Optional JSON array of recipient email addresses."
+    )
+    assert parameters["bcc"]["description"] == (
+        "Optional JSON array of recipient email addresses."
+    )
