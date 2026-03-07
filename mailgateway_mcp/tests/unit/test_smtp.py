@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ssl
 from email.message import EmailMessage
+import smtplib
 
+import pytest
 from mailgateway_mcp.config import SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
@@ -48,6 +50,15 @@ def test_build_ssl_context_disables_verification_when_verify_peer_is_false() -> 
     assert context.verify_mode == ssl.CERT_NONE
 
 
+def test_build_ssl_context_verifies_peer_by_default() -> None:
+    client = SmtpSubmissionClient(SmtpConfig())
+
+    context = client._build_ssl_context()
+
+    assert context.check_hostname is True
+    assert context.verify_mode == ssl.CERT_REQUIRED
+
+
 def test_send_uses_unverified_context_for_starttls(monkeypatch) -> None:
     fake_server = FakeServer()
 
@@ -79,3 +90,101 @@ def test_send_uses_unverified_context_for_starttls(monkeypatch) -> None:
     assert fake_server.login_args == ("user", "secret")
     assert fake_server.sent_from == "agent@example.com"
     assert fake_server.sent_to == ["to@example.com"]
+
+
+def test_send_uses_smtp_ssl_when_use_ssl_is_enabled(monkeypatch) -> None:
+    fake_server = FakeServer()
+
+    def fail_plain_smtp(*args, **kwargs) -> None:
+        raise AssertionError("SMTP should not be used when use_ssl is enabled")
+
+    def fake_smtp_ssl(
+        host: str,
+        port: int,
+        timeout: float,
+        context: ssl.SSLContext,
+    ) -> FakeServer:
+        assert host == "smtp.example.com"
+        assert port == 465
+        assert timeout == 30.0
+        assert context.check_hostname is False
+        assert context.verify_mode == ssl.CERT_NONE
+        return fake_server
+
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fail_plain_smtp)
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP_SSL", fake_smtp_ssl)
+
+    client = SmtpSubmissionClient(
+        SmtpConfig(
+            host="smtp.example.com",
+            port=465,
+            use_ssl=True,
+            starttls=False,
+            verify_peer=False,
+        )
+    )
+
+    message = EmailMessage()
+    message["Subject"] = "Hello"
+
+    client.send(message, sender="agent@example.com", recipients=["to@example.com"])
+
+    assert fake_server.starttls_context is None
+    assert fake_server.login_args is None
+    assert fake_server.ehlo_calls == 1
+    assert fake_server.sent_from == "agent@example.com"
+    assert fake_server.sent_to == ["to@example.com"]
+
+
+def test_send_skips_login_when_username_is_not_configured(monkeypatch) -> None:
+    fake_server = FakeServer()
+
+    def fake_smtp(host: str, port: int, timeout: float) -> FakeServer:
+        return fake_server
+
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
+
+    client = SmtpSubmissionClient(SmtpConfig(username="", password=""))
+    message = EmailMessage()
+    message["Subject"] = "Hello"
+
+    client.send(message, sender="agent@example.com", recipients=["to@example.com"])
+
+    assert fake_server.login_args is None
+
+
+def test_send_propagates_connection_errors(monkeypatch) -> None:
+    def fake_smtp(host: str, port: int, timeout: float) -> None:
+        raise OSError("connection refused")
+
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
+
+    client = SmtpSubmissionClient(SmtpConfig())
+    message = EmailMessage()
+    message["Subject"] = "Hello"
+
+    with pytest.raises(OSError, match="connection refused"):
+        client.send(message, sender="agent@example.com", recipients=["to@example.com"])
+
+
+def test_send_propagates_authentication_errors(monkeypatch) -> None:
+    fake_server = FakeServer()
+
+    def fake_login(username: str, password: str) -> None:
+        raise smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+
+    fake_server.login = fake_login
+
+    def fake_smtp(host: str, port: int, timeout: float) -> FakeServer:
+        return fake_server
+
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
+
+    client = SmtpSubmissionClient(
+        SmtpConfig(username="user", password="secret")
+    )
+    message = EmailMessage()
+    message["Subject"] = "Hello"
+
+    with pytest.raises(smtplib.SMTPAuthenticationError):
+        client.send(message, sender="agent@example.com", recipients=["to@example.com"])

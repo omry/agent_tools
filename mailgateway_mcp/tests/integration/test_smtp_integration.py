@@ -1,53 +1,45 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
 from email import policy
 from email.parser import BytesParser
+import smtplib
+import ssl
+from typing import Any
 
+from aiosmtpd.controller import Controller
 import pytest
+import trustme
 
 from mailgateway_mcp.app import MailGatewayApp
 from mailgateway_mcp.config import AppConfig, SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
-from aiosmtpd.controller import Controller
-
 
 class CapturingHandler:
     def __init__(self) -> None:
-        self.envelopes = []
+        self.envelopes: list[Any] = []
 
     async def handle_DATA(self, server, session, envelope) -> str:
         self.envelopes.append(envelope)
         return "250 Message accepted for delivery"
 
 
-@pytest.fixture
-def smtp_server(free_tcp_port: int):
-    handler = CapturingHandler()
-    controller = Controller(handler, hostname="127.0.0.1", port=free_tcp_port)
-    controller.start()
-    try:
-        yield handler, controller
-    finally:
-        controller.stop()
+def _build_server_ssl_context(cert_path: str, key_path: str) -> ssl.SSLContext:
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    context.load_cert_chain(certfile=cert_path, keyfile=key_path)
+    return context
 
 
-def test_send_email_submits_to_aiosmtpd(smtp_server) -> None:
-    handler, controller = smtp_server
-    smtp_config = SmtpConfig(
-        host=controller.hostname,
-        port=controller.port,
-        from_email="agent@example.com",
-        from_name="Agent MailGateway",
-        starttls=False,
-        use_ssl=False,
-    )
-    app = MailGatewayApp(
+def _build_app(smtp_config: SmtpConfig) -> MailGatewayApp:
+    return MailGatewayApp(
         AppConfig(smtp=smtp_config),
         smtp_client=SmtpSubmissionClient(smtp_config),
     )
 
-    result = app.send_email(
+
+def _send_test_message(app: MailGatewayApp) -> None:
+    app.send_email(
         to=["to@example.com"],
         cc=["cc@example.com"],
         bcc=["bcc@example.com"],
@@ -56,8 +48,8 @@ def test_send_email_submits_to_aiosmtpd(smtp_server) -> None:
         html_body="<p>HTML body</p>",
     )
 
-    assert result.tool == "send_email"
-    assert result.recipient_count == 3
+
+def _assert_captured_message(handler: CapturingHandler) -> None:
     assert len(handler.envelopes) == 1
 
     envelope = handler.envelopes[0]
@@ -74,3 +66,234 @@ def test_send_email_submits_to_aiosmtpd(smtp_server) -> None:
     assert parsed_message["Cc"] == "cc@example.com"
     assert parsed_message["Subject"] == "Integration Hello"
     assert parsed_message["Bcc"] is None
+
+
+@pytest.fixture
+def server_certificate_paths(tmp_path) -> tuple[str, str]:
+    ca = trustme.CA()
+    server_cert = ca.issue_cert("localhost", "127.0.0.1")
+
+    cert_path = tmp_path / "smtp-server.pem"
+    key_path = tmp_path / "smtp-server.key"
+    server_cert.cert_chain_pems[0].write_to_path(cert_path)
+    server_cert.private_key_pem.write_to_path(key_path)
+
+    return str(cert_path), str(key_path)
+
+
+@pytest.fixture
+def smtp_server_factory(
+    free_tcp_port_factory: Callable[[], int],
+    server_certificate_paths: tuple[str, str],
+) -> Iterator[Callable[..., tuple[CapturingHandler, Controller]]]:
+    controllers: list[Controller] = []
+
+    def start_server(
+        *,
+        starttls: bool = False,
+        use_ssl: bool = False,
+        **controller_kwargs,
+    ) -> tuple[CapturingHandler, Controller]:
+        cert_path, key_path = server_certificate_paths
+        handler = CapturingHandler()
+        controller = Controller(
+            handler,
+            hostname="127.0.0.1",
+            port=free_tcp_port_factory(),
+            tls_context=_build_server_ssl_context(cert_path, key_path)
+            if starttls
+            else None,
+            ssl_context=_build_server_ssl_context(cert_path, key_path)
+            if use_ssl
+            else None,
+            **controller_kwargs,
+        )
+        controller.start()
+        controllers.append(controller)
+        return handler, controller
+
+    try:
+        yield start_server
+    finally:
+        for controller in reversed(controllers):
+            controller.stop()
+
+
+def test_send_email_submits_to_plain_smtp_server(smtp_server_factory) -> None:
+    handler, controller = smtp_server_factory()
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    result = app.send_email(
+        to=["to@example.com"],
+        cc=["cc@example.com"],
+        bcc=["bcc@example.com"],
+        subject="Integration Hello",
+        text_body="Plain body",
+        html_body="<p>HTML body</p>",
+    )
+
+    assert result.tool == "send_email"
+    assert result.recipient_count == 3
+    _assert_captured_message(handler)
+
+
+def test_send_email_fails_when_server_is_unavailable(free_tcp_port: int) -> None:
+    smtp_config = SmtpConfig(
+        host="127.0.0.1",
+        port=free_tcp_port,
+        from_email="agent@example.com",
+        starttls=False,
+        use_ssl=False,
+        timeout_seconds=1.0,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(OSError):
+        _send_test_message(app)
+
+
+def test_send_email_submits_over_starttls_when_peer_verification_is_disabled(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(starttls=True)
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=True,
+        use_ssl=False,
+        verify_peer=False,
+    )
+    app = _build_app(smtp_config)
+
+    _send_test_message(app)
+
+    _assert_captured_message(handler)
+
+
+def test_send_email_fails_on_starttls_with_invalid_certificate(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(starttls=True)
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=True,
+        use_ssl=False,
+        verify_peer=True,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(ssl.SSLCertVerificationError):
+        _send_test_message(app)
+
+    assert handler.envelopes == []
+
+
+def test_send_email_submits_over_smtps_when_peer_verification_is_disabled(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(use_ssl=True)
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=True,
+        verify_peer=False,
+    )
+    app = _build_app(smtp_config)
+
+    _send_test_message(app)
+
+    _assert_captured_message(handler)
+
+
+def test_send_email_fails_on_smtps_with_invalid_certificate(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(use_ssl=True)
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=True,
+        verify_peer=True,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(ssl.SSLCertVerificationError):
+        _send_test_message(app)
+
+    assert handler.envelopes == []
+
+
+def test_send_email_authenticates_successfully_after_starttls(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(
+        starttls=True,
+        require_starttls=True,
+        auth_required=True,
+        auth_callback=lambda mechanism, login, password: (
+            login == b"user" and password == b"secret"
+        ),
+    )
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        username="user",
+        password="secret",
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=True,
+        use_ssl=False,
+        verify_peer=False,
+    )
+    app = _build_app(smtp_config)
+
+    _send_test_message(app)
+
+    _assert_captured_message(handler)
+
+
+def test_send_email_surfaces_authentication_failures(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(
+        starttls=True,
+        require_starttls=True,
+        auth_required=True,
+        auth_callback=lambda mechanism, login, password: False,
+    )
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        username="user",
+        password="wrong",
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=True,
+        use_ssl=False,
+        verify_peer=False,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(smtplib.SMTPAuthenticationError):
+        _send_test_message(app)
+
+    assert handler.envelopes == []
