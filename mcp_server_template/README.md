@@ -28,7 +28,7 @@ What is included:
 Copy the directory:
 
 ```bash
-cp -r templates/mcp_server <new_server_dir>
+cp -r mcp_server_template <new_server_dir>
 cd <new_server_dir>
 ```
 
@@ -41,22 +41,22 @@ Rename these first:
 
 Edit these next:
 
-- [`pyproject.toml`](/home/omry/dev/agent-tools/templates/mcp_server/pyproject.toml)
+- [`pyproject.toml`](/home/omry/dev/agent-tools/mcp_server_template/pyproject.toml)
   - `project.name`
   - `project.description`
   - `[project.scripts]`
   - package-data key if the package name changes
-- [`src/mcp_server/config.py`](/home/omry/dev/agent-tools/templates/mcp_server/src/mcp_server/config.py)
+- [`src/mcp_server/config.py`](/home/omry/dev/agent-tools/mcp_server_template/src/mcp_server/config.py)
   - `ServerConfig.name`
   - config sections if the new server needs different settings
-- [`src/mcp_server/conf/config.yaml`](/home/omry/dev/agent-tools/templates/mcp_server/src/mcp_server/conf/config.yaml)
+- [`src/mcp_server/conf/config.yaml`](/home/omry/dev/agent-tools/mcp_server_template/src/mcp_server/conf/config.yaml)
   - `server.name`
   - transport defaults if needed
-- [`src/mcp_server/app.py`](/home/omry/dev/agent-tools/templates/mcp_server/src/mcp_server/app.py)
+- [`src/mcp_server/app.py`](/home/omry/dev/agent-tools/mcp_server_template/src/mcp_server/app.py)
   - replace `hello` with the first real domain behavior
-- [`src/mcp_server/main.py`](/home/omry/dev/agent-tools/templates/mcp_server/src/mcp_server/main.py)
+- [`src/mcp_server/main.py`](/home/omry/dev/agent-tools/mcp_server_template/src/mcp_server/main.py)
   - replace the `hello` tool registration with the real tool set
-- [`tests/unit/`](/home/omry/dev/agent-tools/templates/mcp_server/tests/unit)
+- [`tests/unit/`](/home/omry/dev/agent-tools/mcp_server_template/tests/unit)
   - rename imports
   - update the smoke-test expectations
 

@@ -4,7 +4,7 @@ This repository contains MCP server templates and project-specific design work.
 
 ## Contents
 
-- [templates/mcp_server](templates/mcp_server): base MCP server template
+- [mcp_server_template](mcp_server_template): base MCP server template
 - [mailgateway_mcp](mailgateway_mcp): mail gateway MCP server design and planned implementation
 
 ## MailGateway MCP
