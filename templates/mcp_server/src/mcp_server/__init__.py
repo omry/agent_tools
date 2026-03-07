@@ -1,0 +1,1 @@
+"""Bootstrap MCP server package."""
