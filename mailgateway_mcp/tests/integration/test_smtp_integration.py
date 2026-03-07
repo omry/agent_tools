@@ -212,6 +212,37 @@ def test_send_email_submits_html_only_message(smtp_server_factory) -> None:
     assert "<p>HTML only</p>" in parsed_message.get_content()
 
 
+def test_send_email_preserves_non_ascii_subject_and_display_name(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory()
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Jöhn Döe",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    result = app.send_email(
+        to=["to@example.com"],
+        subject="Héllo ✓",
+        text_body="Plain body",
+    )
+
+    assert result.tool == "send_email"
+    assert result.recipient_count == 1
+    assert len(handler.envelopes) == 1
+
+    envelope = handler.envelopes[0]
+    parsed_message = BytesParser(policy=policy.default).parsebytes(envelope.content)
+
+    assert parsed_message["From"] == "Jöhn Döe <agent@example.com>"
+    assert parsed_message["Subject"] == "Héllo ✓"
+
+
 def test_send_email_fails_when_server_is_unavailable(free_tcp_port: int) -> None:
     smtp_config = SmtpConfig(
         host="127.0.0.1",

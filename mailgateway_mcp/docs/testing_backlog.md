@@ -72,7 +72,8 @@ This file tracks the highest-value gaps between:
 - Non-ASCII subject and display-name handling
   - Why: common real-world interoperability case
   - Level: unit + integration
-  - Status: `todo`
+  - Status: `done`
+  - Coverage: `tests/unit/test_app.py`, `tests/integration/test_smtp_integration.py`
 
 ## P2
 

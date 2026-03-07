@@ -113,3 +113,25 @@ def test_send_email_supports_html_only_body() -> None:
     assert smtp_client.message.get_content_type() == "text/html"
     assert smtp_client.message.is_multipart() is False
     assert "<p>HTML only</p>" in smtp_client.message.get_content()
+
+
+def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
+    smtp_client = FakeSmtpClient()
+    app = MailGatewayApp(
+        AppConfig(
+            smtp=SmtpConfig(
+                from_email="agent@example.com",
+                from_name="Jöhn Döe",
+            )
+        ),
+        smtp_client=smtp_client,
+    )
+
+    app.send_email(
+        to=["to@example.com"],
+        subject="Héllo ✓",
+        text_body="Plain text body",
+    )
+
+    assert smtp_client.message["From"] == "Jöhn Döe <agent@example.com>"
+    assert smtp_client.message["Subject"] == "Héllo ✓"
