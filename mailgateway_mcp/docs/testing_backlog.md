@@ -79,8 +79,9 @@ This file tracks the highest-value gaps between:
 
 - Recipient refusal policy at SMTP layer
   - Why: improves transport diagnostics
-  - Level: integration
-  - Status: `todo`
+  - Level: unit + integration
+  - Status: `done`
+  - Coverage: `tests/unit/test_smtp.py`, `tests/integration/test_smtp_integration.py`
 
 - Logging coverage for connection attempt, submission result, and failure paths
   - Why: operational debugging and auditability

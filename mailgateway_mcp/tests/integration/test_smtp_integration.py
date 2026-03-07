@@ -8,6 +8,7 @@ import ssl
 from typing import Any
 
 from aiosmtpd.controller import Controller
+from aiosmtpd.smtp import MISSING
 import pytest
 import trustme
 
@@ -33,6 +34,19 @@ class RejectingRcptHandler(CapturingHandler):
     async def handle_RCPT(self, server, session, envelope, address, options) -> str:
         self.rejected_recipients.append(address)
         return "550 Recipient rejected"
+
+
+class PartiallyRejectingRcptHandler(CapturingHandler):
+    def __init__(self, rejected_recipient: str) -> None:
+        super().__init__()
+        self.rejected_recipient = rejected_recipient
+        self.rejected_recipients: list[str] = []
+
+    async def handle_RCPT(self, server, session, envelope, address, options):
+        if address == self.rejected_recipient:
+            self.rejected_recipients.append(address)
+            return "550 Recipient rejected"
+        return MISSING
 
 
 class RejectingDataHandler(CapturingHandler):
@@ -284,6 +298,36 @@ def test_send_email_surfaces_rcpt_rejections(smtp_server_factory) -> None:
         "bcc@example.com",
     ]
     assert handler.envelopes == []
+
+
+def test_send_email_fails_closed_when_only_some_recipients_are_refused(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(
+        handler=PartiallyRejectingRcptHandler("bcc@example.com")
+    )
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(smtplib.SMTPRecipientsRefused) as excinfo:
+        _send_test_message(app)
+
+    assert excinfo.value.recipients == {
+        "bcc@example.com": (550, b"Recipient rejected"),
+    }
+    assert handler.rejected_recipients == ["bcc@example.com"]
+    assert len(handler.envelopes) == 1
+    assert handler.envelopes[0].rcpt_tos == [
+        "to@example.com",
+        "cc@example.com",
+    ]
 
 
 def test_send_email_surfaces_data_rejections(smtp_server_factory) -> None:

@@ -37,7 +37,13 @@ class SmtpSubmissionClient:
             if self._config.username:
                 server.login(self._config.username, self._config.password)
 
-            server.send_message(message, from_addr=sender, to_addrs=recipients)
+            refused_recipients = server.send_message(
+                message,
+                from_addr=sender,
+                to_addrs=recipients,
+            )
+            if refused_recipients:
+                raise smtplib.SMTPRecipientsRefused(refused_recipients)
 
     def _build_ssl_context(self) -> ssl.SSLContext:
         if self._config.verify_peer:

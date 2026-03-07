@@ -18,6 +18,7 @@ class FakeServer:
         self.sent_to = None
         self.login_args = None
         self.ehlo_calls = 0
+        self.refused_recipients = {}
 
     def __enter__(self) -> "FakeServer":
         return self
@@ -34,10 +35,16 @@ class FakeServer:
     def login(self, username: str, password: str) -> None:
         self.login_args = (username, password)
 
-    def send_message(self, message: EmailMessage, from_addr: str, to_addrs: list[str]) -> None:
+    def send_message(
+        self,
+        message: EmailMessage,
+        from_addr: str,
+        to_addrs: list[str],
+    ) -> dict[str, tuple[int, bytes]]:
         self.sent_message = message
         self.sent_from = from_addr
         self.sent_to = to_addrs
+        return self.refused_recipients
 
 
 def test_build_ssl_context_disables_verification_when_verify_peer_is_false() -> None:
@@ -189,6 +196,33 @@ def test_send_propagates_authentication_errors(monkeypatch) -> None:
 
     with pytest.raises(smtplib.SMTPAuthenticationError):
         client.send(message, sender="agent@example.com", recipients=["to@example.com"])
+
+
+def test_send_raises_when_some_recipients_are_refused(monkeypatch) -> None:
+    fake_server = FakeServer()
+    fake_server.refused_recipients = {
+        "bcc@example.com": (550, b"Recipient rejected"),
+    }
+
+    def fake_smtp(host: str, port: int, timeout: float) -> FakeServer:
+        return fake_server
+
+    monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
+
+    client = SmtpSubmissionClient(SmtpConfig())
+    message = EmailMessage()
+    message["Subject"] = "Hello"
+
+    with pytest.raises(smtplib.SMTPRecipientsRefused) as excinfo:
+        client.send(
+            message,
+            sender="agent@example.com",
+            recipients=["to@example.com", "bcc@example.com"],
+        )
+
+    assert excinfo.value.recipients == {
+        "bcc@example.com": (550, b"Recipient rejected"),
+    }
 
 
 def test_client_rejects_invalid_duck_typed_config() -> None:
