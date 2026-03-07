@@ -1,6 +1,8 @@
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.egg
 *.egg-info/
-mailgateway_mcp/outputs
-templates/mcp_server/outputs
+build/
+dist/
+outputs/
