@@ -1,2 +1,0 @@
-"""Mail MCP server package."""
-

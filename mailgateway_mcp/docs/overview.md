@@ -1,11 +1,11 @@
-# RFC: Mail MCP Server Overview
+# RFC: MailGateway MCP Server Overview
 
-- Document ID: `mail-mcp-overview`
+- Document ID: `mailgateway-mcp-overview`
 - Version: `0.1.0`
 - Status: `Draft`
 - Authors: `Codex`, `Omry Yadan`
 - Last Updated: `2026-03-07`
-- Intended Use: implementation-driving overview for the mail MCP server
+- Intended Use: implementation-driving overview for the MailGateway MCP server
 
 ## Purpose
 

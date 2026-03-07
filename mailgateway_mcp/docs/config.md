@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the deployment-owned configuration contract for the mail MCP server.
+Define the deployment-owned configuration contract for the MailGateway MCP server.
 
 ## Configuration system
 

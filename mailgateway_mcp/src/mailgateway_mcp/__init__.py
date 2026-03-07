@@ -1,0 +1,1 @@
+"""MailGateway MCP server package."""

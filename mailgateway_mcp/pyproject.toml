@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mail-mcp"
+name = "mailgateway-mcp"
 version = "0.1.0"
-description = "Mail MCP server implementation"
+description = "Mail gateway MCP server implementation"
 requires-python = ">=3.10"
 dependencies = [
   "hydra-core>=1.3,<2.0",
@@ -18,7 +18,7 @@ dev = [
 ]
 
 [project.scripts]
-mail-mcp = "mail_mcp.main:main"
+mailgateway-mcp = "mailgateway_mcp.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -31,4 +31,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"mail_mcp.conf" = ["*.yaml"]
+"mailgateway_mcp.conf" = ["*.yaml"]

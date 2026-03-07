@@ -4,15 +4,15 @@ from typing import TYPE_CHECKING
 
 import hydra
 
-from .app import MailMcpApp
+from .app import MailGatewayApp
 from .config import AppConfigLike, register_configs
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
-def build_app(cfg: AppConfigLike) -> MailMcpApp:
-    return MailMcpApp(cfg)
+def build_app(cfg: AppConfigLike) -> MailGatewayApp:
+    return MailGatewayApp(cfg)
 
 
 def build_server(cfg: AppConfigLike) -> "FastMCP":

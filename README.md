@@ -5,15 +5,15 @@ This repository contains MCP server templates and project-specific design work.
 ## Contents
 
 - [templates/mcp_server](templates/mcp_server): base MCP server template
-- [mail_mcp](mail_mcp): mail-focused MCP server design and planned implementation
+- [mailgateway_mcp](mailgateway_mcp): mail gateway MCP server design and planned implementation
 
-## Mail MCP
+## MailGateway MCP
 
-The mail MCP work is documented under [mail_mcp/docs](mail_mcp/docs).
+The mail gateway MCP work is documented under [mailgateway_mcp/docs](mailgateway_mcp/docs).
 
 Key entry points:
 
-- [mail_mcp/README.md](mail_mcp/README.md)
-- [mail_mcp/docs/overview.md](mail_mcp/docs/overview.md)
-- [mail_mcp/docs/architecture.md](mail_mcp/docs/architecture.md)
-- [mail_mcp/docs/config.md](mail_mcp/docs/config.md)
+- [mailgateway_mcp/README.md](mailgateway_mcp/README.md)
+- [mailgateway_mcp/docs/overview.md](mailgateway_mcp/docs/overview.md)
+- [mailgateway_mcp/docs/architecture.md](mailgateway_mcp/docs/architecture.md)
+- [mailgateway_mcp/docs/config.md](mailgateway_mcp/docs/config.md)

@@ -8,7 +8,7 @@ from hydra.core.config_store import ConfigStore
 
 @dataclass
 class ServerConfig:
-    name: str = "mail-mcp"
+    name: str = "mailgateway-mcp"
     transport: str = "streamable-http"
     host: str = "127.0.0.1"
     port: int = 8000

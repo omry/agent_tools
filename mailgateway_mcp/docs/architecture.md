@@ -43,7 +43,7 @@ The point of the implementation is not to build a generic mail framework. It is 
 ## Repository shape
 
 ```text
-mail_mcp/
+mailgateway_mcp/
   README.md
   docs/
     overview.md

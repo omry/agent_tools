@@ -3,7 +3,7 @@
 ## Status
 
 - Stage: `v1`
-- Owner: `mail MCP server`
+- Owner: `MailGateway MCP server`
 
 ## Purpose
 

@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 from omegaconf import OmegaConf
 
-from mail_mcp.config import AppConfig, HelloConfig
-from mail_mcp.main import build_app, build_server
+from mailgateway_mcp.config import AppConfig, HelloConfig
+from mailgateway_mcp.main import build_app, build_server
 
 
 def test_build_app_accepts_hydra_config() -> None:
@@ -65,7 +65,7 @@ def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> N
 
     server = build_server(cfg)
 
-    assert server.name == "mail-mcp"
+    assert server.name == "mailgateway-mcp"
     assert server.stateless_http is True
     assert server.json_response is True
     assert server.settings.host == "127.0.0.1"

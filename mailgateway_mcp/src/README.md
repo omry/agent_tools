@@ -1,6 +1,6 @@
 # Source Layout
 
-Use this directory for the mail MCP server implementation.
+Use this directory for the mail gateway MCP server implementation.
 
 Suggested subdirectories:
 

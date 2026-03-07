@@ -11,7 +11,7 @@ class HelloResult:
     message: str
 
 
-class MailMcpApp:
+class MailGatewayApp:
     """Minimal application surface before wiring a concrete MCP SDK."""
 
     def __init__(self, config: AppConfigLike) -> None:

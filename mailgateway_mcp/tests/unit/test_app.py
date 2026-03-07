@@ -1,17 +1,17 @@
-from mail_mcp.app import MailMcpApp
-from mail_mcp.config import AppConfig, HelloConfig, ServerConfig
+from mailgateway_mcp.app import MailGatewayApp
+from mailgateway_mcp.config import AppConfig, HelloConfig, ServerConfig
 
 
 def test_tool_names_contains_hello() -> None:
-    app = MailMcpApp(AppConfig())
+    app = MailGatewayApp(AppConfig())
 
     assert app.tool_names() == ["hello"]
 
 
 def test_hello_uses_default_name_from_config() -> None:
-    app = MailMcpApp(
+    app = MailGatewayApp(
         AppConfig(
-            server=ServerConfig(name="mail-mcp"),
+            server=ServerConfig(name="mailgateway-mcp"),
             hello=HelloConfig(greeting="Hello", default_name="world"),
         )
     )
@@ -23,7 +23,7 @@ def test_hello_uses_default_name_from_config() -> None:
 
 
 def test_hello_accepts_explicit_name() -> None:
-    app = MailMcpApp(AppConfig())
+    app = MailGatewayApp(AppConfig())
 
     result = app.hello("Omry")
 

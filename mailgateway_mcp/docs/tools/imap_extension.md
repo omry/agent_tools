@@ -3,7 +3,7 @@
 ## Status
 
 - Stage: `stage 2`
-- Owner: `mail MCP server`
+- Owner: `MailGateway MCP server`
 - Rollout gate: begin IMAP only after the SMTP send flow is stable
 
 ## Purpose

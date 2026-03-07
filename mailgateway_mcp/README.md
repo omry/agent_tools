@@ -1,6 +1,6 @@
-# Mail MCP Server
+# MailGateway MCP Server
 
-This directory contains the design and future implementation of a mail-focused MCP server.
+This directory contains the design and future implementation of a mail gateway MCP server.
 
 The design is documented in the `docs/` structure used by the MCP server template:
 

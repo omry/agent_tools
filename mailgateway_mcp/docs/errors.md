@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the stable error contract shared by the mail MCP server.
+Define the stable error contract shared by the MailGateway MCP server.
 
 ## Error response shape
 
