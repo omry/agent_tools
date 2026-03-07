@@ -30,7 +30,7 @@ The initial deployment target is a bot operating on its own private email accoun
 - Bulk email or campaign workflows
 - Attachment handling
 - Inbox search, read, delete, or move operations
-- Per-call SMTP configuration overrides
+- Per-call transport parameter overrides such as host, port, TLS mode, credentials, or sender identity
 
 ## Core design principles
 
@@ -55,7 +55,7 @@ Questions to resolve before supporting a personal inbox:
 
 ### 4. Small, explicit surface area
 
-Add capabilities incrementally. v1 should expose a minimal tool set: account discovery plus a single mail submission tool. IMAP should be designed as a later extension, not partially implemented in v1.
+Add capabilities incrementally. v1 should expose a minimal tool set: account discovery plus a single mail submission tool. IMAP is designed in this document, but its implementation belongs to a second stage rather than a partial v1 rollout.
 
 ### 5. Auditable behavior
 
@@ -65,14 +65,14 @@ Every tool call should produce structured logs and normalized results so that au
 
 - `account`: the credential and identity boundary used for SMTP submission and IMAP access
 - `folder`: an IMAP folder within an account, such as `INBOX` or `Alerts`
-- `access_profile`: a policy profile applied at the account level, such as `bot` or `owner`
+- `account_access_profile`: a policy profile applied at the account level; the initial profile types are `bot` and `owner`
 
 This document uses these terms deliberately:
 
 - SMTP is tied to an `account`
 - IMAP is tied to an `account`
 - IMAP operations target a `folder`
-- sensitive behavior is controlled by an account-level `access_profile`, not by pretending one folder is a different account
+- sensitive behavior is controlled by the account's configured `account_access_profile`
 - multiple configured accounts may coexist in one server deployment
 
 ## High-level architecture
@@ -118,7 +118,7 @@ mail_mcp/
       access_policy.*
 ```
 
-The implementation language is Python so the server can use OmegaConf directly for hierarchical configuration and environment-variable interpolation. The important point is still to separate MCP tool handling from SMTP and IMAP protocol details.
+The implementation language is Python so the server can use OmegaConf directly for hierarchical configuration and environment-variable interpolation.
 
 ## v1 capability: Account Discovery
 
@@ -152,7 +152,7 @@ Use this when the caller needs to discover which accounts exist before selecting
     {
       "name": "primary",
       "description": "Bot-owned account for automated email tasks",
-      "access_profile": "bot",
+      "account_access_profile": "bot",
       "smtp_enabled": true,
       "imap_enabled": true,
       "imap_read_only": false
@@ -173,7 +173,7 @@ Expected behavior:
 2. Construct the defined response shape from the configured accounts
 3. Return stable account names and human-readable descriptions
 4. Indicate which protocols are enabled for each account
-5. If `imap_enabled` is `true`, indicate whether IMAP access is read-only under the account's configured access profile
+5. If `imap_enabled` is `true`, indicate whether IMAP access is read-only under the account's configured `account_access_profile`
 6. If `imap_enabled` is `false`, omit `imap_read_only`
 
 ## v1 capability: SMTP send
@@ -333,7 +333,7 @@ mail:
   accounts:
     primary:
       description: Bot-owned account for automated email tasks.
-      access_profile: bot
+      account_access_profile: bot
       smtp:
         host: smtp.example.com
         port: 587
@@ -369,7 +369,7 @@ mail:
             description: Operational notifications.
     owner:
       description: Owner account with stricter access policy.
-      access_profile: owner
+      account_access_profile: owner
       imap:
         host: imap.example.com
         port: 993
@@ -383,7 +383,7 @@ mail:
             description: Owner inbox.
           Archive:
             description: Owner archive folder.
-  access_profiles:
+  account_access_profiles:
     bot:
       read_only: false
       smtp_audit:
@@ -424,11 +424,11 @@ Relevant top-level settings:
 
 - `mail.accounts`: required mapping of configured accounts
 - `mail.accounts.<account>.description`: required human-readable account purpose
-- `mail.access_profiles`: required mapping of access profile to default behavior
-- `mail.access_profiles.bot.read_only`: required
-- `mail.access_profiles.owner.read_only`: required
-- `mail.access_profiles.<profile>.smtp_audit`: required SMTP audit config for that profile
-- `mail.access_profiles.<profile>.imap_audit`: required IMAP audit config for that profile
+- `mail.account_access_profiles`: required mapping of account access profile definitions
+- `mail.account_access_profiles.bot.read_only`: required
+- `mail.account_access_profiles.owner.read_only`: required
+- `mail.account_access_profiles.<profile>.smtp_audit`: required SMTP audit config for that profile
+- `mail.account_access_profiles.<profile>.imap_audit`: required IMAP audit config for that profile
 
 Relevant SMTP settings for an account with SMTP enabled:
 - `mail.accounts.<account>.smtp.host`: required
@@ -460,7 +460,7 @@ Relevant IMAP settings for an account with IMAP enabled:
 
 Relevant account-level policy settings:
 
-- `mail.accounts.<account>.access_profile`: required reference to a profile under `mail.access_profiles`
+- `mail.accounts.<account>.account_access_profile`: required reference to a profile under `mail.account_access_profiles`
 
 Rules:
 
@@ -472,7 +472,7 @@ Rules:
 - If `mail.accounts.<account>.smtp.tls` is configured, failure to establish the configured TLS mode must fail closed.
 - The `From` identity should be server-owned and not caller-controlled in v1.
 - `Reply-To` should be omitted or set to the same sender identity in v1.
-- `mail.accounts.<account>.access_profile` must match a key under `mail.access_profiles`.
+- `mail.accounts.<account>.account_access_profile` must match a key under `mail.account_access_profiles`.
 - If `mail.accounts.<account>.imap.default_folder` is set, it must match a key under `mail.accounts.<account>.imap.folders`.
 
 ## Policy model
@@ -566,9 +566,9 @@ The durable audit log should:
 
 Protocol-specific audit policy:
 
-- audit behavior should be configured under `mail.access_profiles`
-- the implementation should read SMTP audit settings directly from `mail.access_profiles.<profile>.smtp_audit`
-- the implementation should read IMAP audit settings directly from `mail.access_profiles.<profile>.imap_audit`
+- audit behavior should be configured under `mail.account_access_profiles`
+- the implementation should read SMTP audit settings directly from `mail.account_access_profiles.<profile>.smtp_audit`
+- the implementation should read IMAP audit settings directly from `mail.account_access_profiles.<profile>.imap_audit`
 - there is no per-account audit override in the current design
 - IMAP state-changing operations such as flag changes, message moves, and deletes should generate durable audit records by default
 - destructive IMAP operations such as delete should always produce durable audit records when the operation is enabled
@@ -580,7 +580,7 @@ Recommended audit fields:
 - tool name
 - account name when applicable
 - folder name when applicable
-- access profile when applicable
+- configured account access profile when applicable
 - caller identity when available
 - idempotency key when provided
 - generated message id
@@ -636,7 +636,7 @@ Each account should define at least:
 - zero or one SMTP config
 - zero or one IMAP config
 - a human-readable description
-- one account-level access profile reference
+- one account-level `account_access_profile` reference
 
 Each configured folder should define at least:
 
@@ -645,10 +645,10 @@ Each configured folder should define at least:
 
 Access profiles should establish default policy:
 
-- `bot`: defaults come from `mail.access_profiles.bot`
-- `owner`: defaults come from `mail.access_profiles.owner`
+- `bot`: defaults come from `mail.account_access_profiles.bot`
+- `owner`: defaults come from `mail.account_access_profiles.owner`
 
-The initial config shape should rely on account-level access profiles. Folder-specific policy and audit overrides are intentionally out of scope for the default document shape.
+The initial config shape should rely on account-level `account_access_profile` definitions. Folder-specific policy and audit overrides are intentionally out of scope for the default document shape.
 
 When IMAP is added, the initial implementation may include both read and write operations. Write-capable behavior should still be controlled by access-profile policy and any future guardrails for sensitive accounts. Startup validation must also confirm that `mail.accounts.<account>.imap.default_folder`, when set, refers to a configured folder.
 
