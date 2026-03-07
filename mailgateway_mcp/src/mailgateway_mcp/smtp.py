@@ -4,11 +4,12 @@ from email.message import EmailMessage
 import smtplib
 import ssl
 
-from .config import SmtpConfigLike
+from .config import SmtpConfigLike, validate_smtp_config
 
 
 class SmtpSubmissionClient:
     def __init__(self, config: SmtpConfigLike) -> None:
+        validate_smtp_config(config)
         self._config = config
 
     def send(self, message: EmailMessage, sender: str, recipients: list[str]) -> None:

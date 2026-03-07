@@ -59,7 +59,8 @@ This file tracks the highest-value gaps between:
 - Invalid SMTP config combinations are rejected
   - Why: avoid ambiguous runtime behavior
   - Level: unit
-  - Status: `todo`
+  - Status: `done`
+  - Coverage: `tests/unit/test_config.py`, `tests/unit/test_smtp.py`
   - Examples: `use_ssl=true` with `starttls=true`, username without password
 
 - HTML-only message serialization

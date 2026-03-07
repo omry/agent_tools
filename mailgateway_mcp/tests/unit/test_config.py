@@ -1,7 +1,8 @@
+import pytest
 from hydra import compose, initialize_config_module
 from omegaconf import DictConfig
 
-from mailgateway_mcp.config import register_configs
+from mailgateway_mcp.config import SmtpConfig, register_configs
 
 
 def _compose_config(overrides: list[str] | None = None) -> DictConfig:
@@ -54,3 +55,23 @@ def test_hydra_config_preserves_lazy_interpolations() -> None:
 
     assert app_config.server.name == "mailgateway-mcp"
     assert app_config.hello.default_name == "mailgateway-mcp"
+
+
+def test_smtp_config_rejects_mutually_exclusive_tls_modes() -> None:
+    with pytest.raises(ValueError, match="both use_ssl and starttls"):
+        SmtpConfig(use_ssl=True, starttls=True)
+
+
+@pytest.mark.parametrize(
+    ("username", "password"),
+    [
+        ("user", ""),
+        ("", "secret"),
+    ],
+)
+def test_smtp_config_requires_username_and_password_together(
+    username: str,
+    password: str,
+) -> None:
+    with pytest.raises(ValueError, match="username and password together"):
+        SmtpConfig(username=username, password=password)

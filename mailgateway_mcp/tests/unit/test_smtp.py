@@ -3,6 +3,7 @@ from __future__ import annotations
 import ssl
 from email.message import EmailMessage
 import smtplib
+from types import SimpleNamespace
 
 import pytest
 from mailgateway_mcp.config import SmtpConfig
@@ -188,3 +189,21 @@ def test_send_propagates_authentication_errors(monkeypatch) -> None:
 
     with pytest.raises(smtplib.SMTPAuthenticationError):
         client.send(message, sender="agent@example.com", recipients=["to@example.com"])
+
+
+def test_client_rejects_invalid_duck_typed_config() -> None:
+    with pytest.raises(ValueError, match="both use_ssl and starttls"):
+        SmtpSubmissionClient(
+            SimpleNamespace(
+                host="smtp.example.com",
+                port=587,
+                username="",
+                password="",
+                from_email="agent@example.com",
+                from_name="Agent MailGateway",
+                starttls=True,
+                use_ssl=True,
+                verify_peer=True,
+                timeout_seconds=30.0,
+            )
+        )

@@ -36,6 +36,9 @@ class SmtpConfig:
     verify_peer: bool = True
     timeout_seconds: float = 30.0
 
+    def __post_init__(self) -> None:
+        validate_smtp_config(self)
+
 
 @dataclass
 class AppConfig:
@@ -76,6 +79,16 @@ class AppConfigLike(Protocol):
     server: ServerConfigLike
     hello: HelloConfigLike
     smtp: SmtpConfigLike
+
+
+def validate_smtp_config(config: SmtpConfigLike) -> None:
+    if config.use_ssl and config.starttls:
+        raise ValueError("smtp config cannot enable both use_ssl and starttls")
+
+    has_username = bool(config.username)
+    has_password = bool(config.password)
+    if has_username != has_password:
+        raise ValueError("smtp config requires username and password together")
 
 
 _CONFIG_SCHEMA_NAME = "mailgateway_app_config_schema"
