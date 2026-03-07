@@ -72,5 +72,6 @@ def test_build_server_registers_hello_tool(monkeypatch: pytest.MonkeyPatch) -> N
     assert server.settings.port == 8000
     assert server.settings.streamable_http_path == "/mcp"
     assert "hello" in tools
+    assert "send_email" in tools
     assert tools["hello"]() == "Hello, Hydra!"
     assert tools["hello"]("Omry") == "Hello, Omry!"

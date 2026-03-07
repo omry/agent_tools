@@ -49,7 +49,7 @@ class AppConfigLike(Protocol):
     hello: HelloConfigLike
 
 
-_CONFIG_SCHEMA_NAME = "app_config_schema"
+_CONFIG_SCHEMA_NAME = "mcp_server_app_config_schema"
 _CONFIG_REGISTERED = False
 
 

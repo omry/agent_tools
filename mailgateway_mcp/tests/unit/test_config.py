@@ -19,6 +19,10 @@ def test_compose_config_returns_hydra_config() -> None:
     assert cfg.server.host == "127.0.0.1"
     assert cfg.server.port == 8000
     assert cfg.server.path == "/mcp"
+    assert cfg.smtp.host == "localhost"
+    assert cfg.smtp.port == 587
+    assert cfg.smtp.from_email == "agent@example.com"
+    assert cfg.smtp.verify_peer is True
     assert cfg.hello.greeting == "Hello"
     assert cfg.hello.default_name == "world"
 
@@ -28,6 +32,9 @@ def test_compose_config_applies_overrides() -> None:
         [
             "server.transport=stdio",
             "server.port=9000",
+            "smtp.host=smtp.example.com",
+            "smtp.port=2525",
+            "smtp.verify_peer=false",
             "hello.greeting=Hi",
             "hello.default_name=team",
         ]
@@ -35,6 +42,9 @@ def test_compose_config_applies_overrides() -> None:
 
     assert cfg.server.transport == "stdio"
     assert cfg.server.port == 9000
+    assert cfg.smtp.host == "smtp.example.com"
+    assert cfg.smtp.port == 2525
+    assert cfg.smtp.verify_peer is False
     assert cfg.hello.greeting == "Hi"
     assert cfg.hello.default_name == "team"
 

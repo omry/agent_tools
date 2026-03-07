@@ -6,13 +6,14 @@ import hydra
 
 from .app import MailGatewayApp
 from .config import AppConfigLike, register_configs
+from .smtp import SmtpSubmissionClient
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
 def build_app(cfg: AppConfigLike) -> MailGatewayApp:
-    return MailGatewayApp(cfg)
+    return MailGatewayApp(cfg, smtp_client=SmtpSubmissionClient(cfg.smtp))
 
 
 def build_server(cfg: AppConfigLike) -> "FastMCP":
@@ -31,6 +32,29 @@ def build_server(cfg: AppConfigLike) -> "FastMCP":
     @server.tool()
     def hello(name: str | None = None) -> str:
         return app.hello(name).message
+
+    @server.tool()
+    def send_email(
+        to: list[str],
+        subject: str,
+        text_body: str | None = None,
+        html_body: str | None = None,
+        cc: list[str] | None = None,
+        bcc: list[str] | None = None,
+    ) -> dict[str, object]:
+        result = app.send_email(
+            to=to,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            cc=cc,
+            bcc=bcc,
+        )
+        return {
+            "ok": True,
+            "message_id": result.message_id,
+            "recipient_count": result.recipient_count,
+        }
 
     return server
 

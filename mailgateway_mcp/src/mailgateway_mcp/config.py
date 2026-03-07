@@ -24,9 +24,24 @@ class HelloConfig:
 
 
 @dataclass
+class SmtpConfig:
+    host: str = "localhost"
+    port: int = 587
+    username: str = ""
+    password: str = ""
+    from_email: str = "agent@example.com"
+    from_name: str = "MailGateway"
+    starttls: bool = True
+    use_ssl: bool = False
+    verify_peer: bool = True
+    timeout_seconds: float = 30.0
+
+
+@dataclass
 class AppConfig:
     server: ServerConfig = field(default_factory=ServerConfig)
     hello: HelloConfig = field(default_factory=HelloConfig)
+    smtp: SmtpConfig = field(default_factory=SmtpConfig)
 
 
 class ServerConfigLike(Protocol):
@@ -44,12 +59,26 @@ class HelloConfigLike(Protocol):
     default_name: str
 
 
+class SmtpConfigLike(Protocol):
+    host: str
+    port: int
+    username: str
+    password: str
+    from_email: str
+    from_name: str
+    starttls: bool
+    use_ssl: bool
+    verify_peer: bool
+    timeout_seconds: float
+
+
 class AppConfigLike(Protocol):
     server: ServerConfigLike
     hello: HelloConfigLike
+    smtp: SmtpConfigLike
 
 
-_CONFIG_SCHEMA_NAME = "app_config_schema"
+_CONFIG_SCHEMA_NAME = "mailgateway_app_config_schema"
 _CONFIG_REGISTERED = False
 
 

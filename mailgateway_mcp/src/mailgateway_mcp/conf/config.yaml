@@ -1,5 +1,5 @@
 defaults:
-  - app_config_schema
+  - mailgateway_app_config_schema
   - _self_
 
 server:
@@ -14,3 +14,15 @@ server:
 hello:
   greeting: Hello
   default_name: world
+
+smtp:
+  host: localhost
+  port: 587
+  username: ""
+  password: ""
+  from_email: agent@example.com
+  from_name: MailGateway
+  starttls: true
+  use_ssl: false
+  verify_peer: true
+  timeout_seconds: 30.0

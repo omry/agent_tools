@@ -1,5 +1,5 @@
 defaults:
-  - app_config_schema
+  - mcp_server_app_config_schema
   - _self_
 
 server:
