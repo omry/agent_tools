@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+mail_mcp/outputs/
+mail_mcp/multirun/
+**/.hydra/

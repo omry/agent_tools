@@ -1,0 +1,12 @@
+{
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.egg": true,
+    "**/*.egg-info": true,
+    "**/outputs": true,
+    "**/multirun": true,
+    "**/.hydra": true
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda"
+}
