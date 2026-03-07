@@ -39,12 +39,14 @@ This file tracks the highest-value gaps between:
 - SMTP rejection after `RCPT TO` or `DATA`
   - Why: needed to distinguish submission rejection from connection failure
   - Level: integration
-  - Status: `todo`
+  - Status: `done`
+  - Coverage: `tests/integration/test_smtp_integration.py`
 
 - Submission status unknown after partial SMTP progress
   - Why: needed for retry/idempotency semantics
   - Level: integration
-  - Status: `todo`
+  - Status: `done`
+  - Coverage: `tests/integration/test_smtp_integration.py`
 
 ## P1
 
@@ -100,4 +102,3 @@ This file tracks the highest-value gaps between:
   - Level: unit + integration
   - Status: `blocked`
   - Note: policy model is documented, not implemented yet
-

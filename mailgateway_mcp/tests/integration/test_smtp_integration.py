@@ -25,6 +25,36 @@ class CapturingHandler:
         return "250 Message accepted for delivery"
 
 
+class RejectingRcptHandler(CapturingHandler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.rejected_recipients: list[str] = []
+
+    async def handle_RCPT(self, server, session, envelope, address, options) -> str:
+        self.rejected_recipients.append(address)
+        return "550 Recipient rejected"
+
+
+class RejectingDataHandler(CapturingHandler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.data_attempts = 0
+
+    async def handle_DATA(self, server, session, envelope) -> str:
+        self.data_attempts += 1
+        return "554 Message rejected during DATA"
+
+
+class DisconnectingDataHandler(CapturingHandler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.data_attempts = 0
+
+    async def handle_DATA(self, server, session, envelope) -> str:
+        self.data_attempts += 1
+        raise ConnectionResetError("connection lost during DATA")
+
+
 def _build_server_ssl_context(cert_path: str, key_path: str) -> ssl.SSLContext:
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     context.load_cert_chain(certfile=cert_path, keyfile=key_path)
@@ -92,12 +122,13 @@ def smtp_server_factory(
         *,
         starttls: bool = False,
         use_ssl: bool = False,
+        handler: CapturingHandler | None = None,
         **controller_kwargs,
     ) -> tuple[CapturingHandler, Controller]:
         cert_path, key_path = server_certificate_paths
-        handler = CapturingHandler()
+        active_handler = handler or CapturingHandler()
         controller = Controller(
-            handler,
+            active_handler,
             hostname="127.0.0.1",
             port=free_tcp_port_factory(),
             tls_context=_build_server_ssl_context(cert_path, key_path)
@@ -110,7 +141,7 @@ def smtp_server_factory(
         )
         controller.start()
         controllers.append(controller)
-        return handler, controller
+        return active_handler, controller
 
     try:
         yield start_server
@@ -158,6 +189,75 @@ def test_send_email_fails_when_server_is_unavailable(free_tcp_port: int) -> None
 
     with pytest.raises(OSError):
         _send_test_message(app)
+
+
+def test_send_email_surfaces_rcpt_rejections(smtp_server_factory) -> None:
+    handler, controller = smtp_server_factory(handler=RejectingRcptHandler())
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(smtplib.SMTPRecipientsRefused) as excinfo:
+        _send_test_message(app)
+
+    assert sorted(excinfo.value.recipients) == [
+        "bcc@example.com",
+        "cc@example.com",
+        "to@example.com",
+    ]
+    assert handler.rejected_recipients == [
+        "to@example.com",
+        "cc@example.com",
+        "bcc@example.com",
+    ]
+    assert handler.envelopes == []
+
+
+def test_send_email_surfaces_data_rejections(smtp_server_factory) -> None:
+    handler, controller = smtp_server_factory(handler=RejectingDataHandler())
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(smtplib.SMTPDataError) as excinfo:
+        _send_test_message(app)
+
+    assert excinfo.value.smtp_code == 554
+    assert handler.data_attempts == 1
+    assert handler.envelopes == []
+
+
+def test_send_email_surfaces_unknown_submission_status_on_disconnect(
+    smtp_server_factory,
+) -> None:
+    handler, controller = smtp_server_factory(handler=DisconnectingDataHandler())
+    smtp_config = SmtpConfig(
+        host=controller.hostname,
+        port=controller.port,
+        from_email="agent@example.com",
+        from_name="Agent MailGateway",
+        starttls=False,
+        use_ssl=False,
+    )
+    app = _build_app(smtp_config)
+
+    with pytest.raises(smtplib.SMTPServerDisconnected):
+        _send_test_message(app)
+
+    assert handler.data_attempts == 1
+    assert handler.envelopes == []
 
 
 def test_send_email_submits_over_starttls_when_peer_verification_is_disabled(
