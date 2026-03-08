@@ -6,21 +6,6 @@ Track agreed follow-up work that is not specific to tests.
 
 ## Items
 
-- Tie `list_accounts` to real account-aware sending
-  - Why: discovery exists, but it is not yet connected to the actual `send_email` selection path
-  - Status: `todo`
-  - Steps:
-    1. Add end-to-end tests that use a discovered account name directly in `send_email`.
-    2. Update docs so `list_accounts` is described as the discovery source for valid send-account names.
-
-- Pass the selected account through the OpenClaw skill/runtime layer
-  - Why: interactive account choice now happens through runtime discovery while predefined sending stays deployment-fixed, and the remaining work is to tighten that split in the real OpenClaw UI/runtime
-  - Status: `todo`
-  - Steps:
-    1. Verify in the real OpenClaw runtime that the interactive skill can discover accounts via `list_accounts` and send with an explicit selected account.
-    2. Verify in the real OpenClaw runtime that predefined sending stays bound to its configured account through OpenClaw skill config.
-    3. Manually verify in the real OpenClaw UI/runtime that the interactive skill respects sensitive-account confirmation behavior, since that path is not currently automated.
-
 - Revalidate OpenClaw `SKILL.md` metadata format behavior
   - Why: current runtime behavior appears to accept richer multiline metadata, while the docs claim `metadata` should be a single-line JSON object
   - Status: `todo`
