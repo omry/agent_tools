@@ -10,23 +10,24 @@ Use this skill when the user is present and wants help composing or sending an e
 Required environment:
 
 - `MAILGATEWAY_MCP_URL`
+- `MAILGATEWAY_ACCOUNT`
 - optional `MAILGATEWAY_MCP_BEARER_TOKEN`
 - optional `MAILGATEWAY_TIMEOUT_SECONDS`
-- optional `MAILGATEWAY_ACCOUNT_LABEL` for reporting only
 
 Use the helper script at `scripts/send_email_interactive.py`.
 
 Workflow:
 
 1. Gather `to`, `subject`, and at least one of `text_body` or `html_body`.
-2. Prefer plain text unless the user explicitly wants HTML formatting.
-3. Apply conditional confirmation:
+2. Resolve the deployment-owned `MAILGATEWAY_ACCOUNT` and use it as the `send_email.account` value.
+3. Prefer plain text unless the user explicitly wants HTML formatting.
+4. Apply conditional confirmation:
    - confirm before sending if recipients or message content were materially inferred, expanded, or transformed
    - confirmation is not required only for straightforward user-directed sends with explicit recipients and explicit message content
-4. Run the helper script with explicit arguments for recipients and subject, and pass the body through stdin.
+5. Run the helper script with explicit arguments for recipients and subject, and pass the body through stdin.
    Use exactly one of `--text-stdin` or `--html-stdin` to declare the body type.
    Keep `--text-body` and `--html-body` only for manual testing or simple ad hoc calls.
-5. Report the normalized result returned by the helper.
+6. Report the normalized result returned by the helper.
 
 Do not:
 

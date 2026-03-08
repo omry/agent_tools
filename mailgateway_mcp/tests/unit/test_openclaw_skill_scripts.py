@@ -43,7 +43,13 @@ def test_interactive_build_arguments_normalizes_optional_lists() -> None:
         cc = "cc@example.com"
         bcc = None
 
-    assert module.build_arguments(Args()) == {
+    assert module.build_arguments_with_bodies(
+        Args(),
+        account="primary",
+        text_body="Body",
+        html_body=None,
+    ) == {
+        "account": "primary",
         "to": ["a@example.com", "b@example.com"],
         "subject": "Hello",
         "text_body": "Body",
@@ -157,6 +163,52 @@ def test_interactive_resolve_bodies_requires_body_when_no_stdin_or_args() -> Non
         )
 
 
+def test_interactive_run_passes_configured_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_run_account")
+
+    class Args:
+        to = "a@example.com"
+        subject = "Hello"
+        text_body = "Body"
+        html_body = None
+        text_stdin = False
+        html_stdin = False
+        cc = None
+        bcc = None
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(module, "config_from_env", lambda: object())
+    monkeypatch.setattr(module, "account_from_env", lambda: "primary")
+
+    def fake_call_tool_sync(config, tool_name, arguments):
+        captured["tool_name"] = tool_name
+        captured["arguments"] = arguments
+        return {"ok": True}
+
+    monkeypatch.setattr(module, "call_tool_sync", fake_call_tool_sync)
+
+    result = module.run(
+        Args(),
+        stdin_reader=lambda: "",
+        stdin_is_tty=True,
+    )
+
+    assert captured == {
+        "tool_name": "send_email",
+        "arguments": {
+            "account": "primary",
+            "to": ["a@example.com"],
+            "subject": "Hello",
+            "text_body": "Body",
+        },
+    }
+    assert result == {
+        "ok": True,
+        "account": "primary",
+    }
+
+
 def test_predefined_build_payload_renders_template_values() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script")
 
@@ -170,7 +222,9 @@ def test_predefined_build_payload_renders_template_values() -> None:
     assert module.build_payload(
         template,
         {"title": "Disk Full", "severity": "critical"},
+        account="primary",
     ) == {
+        "account": "primary",
         "to": ["ops+critical@example.com"],
         "cc": ["audit@example.com"],
         "subject": "Alert: Disk Full",
@@ -189,7 +243,26 @@ def test_predefined_build_payload_rejects_unexpected_params() -> None:
     }
 
     with pytest.raises(ValueError, match="unexpected template parameters"):
-        module.build_payload(template, {"title": "Disk Full", "summary": "bad"})
+        module.build_payload(
+            template,
+            {"title": "Disk Full", "summary": "bad"},
+            account="primary",
+        )
+
+
+def test_shared_account_from_env_requires_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module(SHARED_PATH, "shared_skill_client_account")
+    monkeypatch.delenv("MAILGATEWAY_ACCOUNT", raising=False)
+
+    with pytest.raises(ValueError, match="MAILGATEWAY_ACCOUNT is required"):
+        module.account_from_env()
+
+
+def test_shared_account_from_env_reads_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module(SHARED_PATH, "shared_skill_client_account_ok")
+    monkeypatch.setenv("MAILGATEWAY_ACCOUNT", "primary")
+
+    assert module.account_from_env() == "primary"
 
 
 def test_shared_parse_json_argument_requires_object() -> None:

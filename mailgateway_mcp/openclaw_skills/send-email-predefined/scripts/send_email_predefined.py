@@ -14,6 +14,7 @@ _SHARED_SCRIPTS = Path(__file__).resolve().parents[2] / "_shared" / "scripts"
 sys.path.insert(0, str(_SHARED_SCRIPTS))
 
 from mailgateway_mcp_client import call_tool_sync, config_from_env, parse_json_argument  # noqa: E402
+from mailgateway_mcp_client import account_from_env  # noqa: E402
 
 
 def _template_fields(value: Any) -> set[str]:
@@ -51,7 +52,12 @@ def load_registry(path: Path) -> dict[str, Any]:
     return data
 
 
-def build_payload(template: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+def build_payload(
+    template: dict[str, Any],
+    params: dict[str, Any],
+    *,
+    account: str,
+) -> dict[str, Any]:
     subject = template.get("subject")
     text_body = template.get("text_body")
     html_body = template.get("html_body")
@@ -77,6 +83,7 @@ def build_payload(template: dict[str, Any], params: dict[str, Any]) -> dict[str,
             )
 
     payload: dict[str, Any] = {
+        "account": account,
         "to": _render_list(to_values, params),
         "subject": _render_string(subject, params),
     }
@@ -147,13 +154,15 @@ def main() -> None:
         parser.error(f"unknown template: {args.template}")
 
     params = parse_json_argument(args.params_json)
-    payload = build_payload(templates[args.template], params)
+    account = account_from_env()
+    payload = build_payload(
+        templates[args.template],
+        params,
+        account=account,
+    )
     result = call_tool_sync(config, "send_email", payload)
     result.setdefault("template", args.template)
-
-    account_label = templates[args.template].get("account_label")
-    if isinstance(account_label, str) and "account" not in result:
-        result["account"] = account_label
+    result.setdefault("account", account)
 
     print(json.dumps(result, indent=2, sort_keys=True))
 

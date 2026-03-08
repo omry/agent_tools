@@ -19,7 +19,6 @@ class MailGatewayClientConfig:
     url: str
     bearer_token: str | None = None
     timeout_seconds: float = 30.0
-    account_label: str | None = None
 
 
 def config_from_env() -> MailGatewayClientConfig:
@@ -28,7 +27,6 @@ def config_from_env() -> MailGatewayClientConfig:
         raise ValueError("MAILGATEWAY_MCP_URL is required")
 
     bearer_token = os.environ.get("MAILGATEWAY_MCP_BEARER_TOKEN", "").strip() or None
-    account_label = os.environ.get("MAILGATEWAY_ACCOUNT_LABEL", "").strip() or None
     timeout_raw = os.environ.get("MAILGATEWAY_TIMEOUT_SECONDS", "30").strip()
 
     try:
@@ -40,8 +38,14 @@ def config_from_env() -> MailGatewayClientConfig:
         url=url,
         bearer_token=bearer_token,
         timeout_seconds=timeout_seconds,
-        account_label=account_label,
     )
+
+
+def account_from_env() -> str:
+    account = os.environ.get("MAILGATEWAY_ACCOUNT", "").strip()
+    if not account:
+        raise ValueError("MAILGATEWAY_ACCOUNT is required")
+    return account
 
 
 def parse_json_argument(value: str | None, *, default: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -54,7 +58,7 @@ def parse_json_argument(value: str | None, *, default: dict[str, Any] | None = N
     return loaded
 
 
-def normalize_tool_result(result: Any, *, account_label: str | None = None) -> dict[str, Any]:
+def normalize_tool_result(result: Any) -> dict[str, Any]:
     normalized: dict[str, Any]
     if result.structuredContent is not None:
         normalized = dict(result.structuredContent)
@@ -66,9 +70,6 @@ def normalize_tool_result(result: Any, *, account_label: str | None = None) -> d
                 for item in result.content
             ],
         }
-
-    if account_label and "account" not in normalized:
-        normalized["account"] = account_label
 
     if result.isError:
         normalized.setdefault("ok", False)
@@ -98,7 +99,7 @@ async def call_tool(
             ) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments=arguments)
-                return normalize_tool_result(result, account_label=config.account_label)
+                return normalize_tool_result(result)
 
 
 def call_tool_sync(

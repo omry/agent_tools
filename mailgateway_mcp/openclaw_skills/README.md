@@ -22,6 +22,12 @@ Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway in
    MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp
    ```
 
+   Set the deployment-owned MailGateway account there as well:
+
+   ```bash
+   MAILGATEWAY_ACCOUNT=primary
+   ```
+
    That works for the current deployment because the `openclaw` container is using host networking.
 
    This value depends on Docker networking:
@@ -48,10 +54,12 @@ curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/main/mailgateway_
 ```bash
 printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \
-  --subject "MailGateway skill test"
+  --subject "MailGateway skill test" \
+  --text-stdin
 ```
 
 ### Updating without losing the installed skills
@@ -186,6 +194,7 @@ docker exec openclaw sh -lc 'find /home/node/.openclaw/skills -maxdepth 3 -name 
 ```bash
 printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \
@@ -207,6 +216,7 @@ HTML body via stdin:
 ```bash
 printf '<p>Hello Omry</p><p>This is an HTML stdin test.</p><p>Best,<br>Atlas</p>\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \
@@ -219,6 +229,7 @@ Regression example showing why arg-passed multiline content is bad:
 ```bash
 docker exec \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \

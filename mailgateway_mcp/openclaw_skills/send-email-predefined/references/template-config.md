@@ -12,7 +12,6 @@
       "to": ["ops@example.com"],
       "cc": [],
       "bcc": [],
-      "account_label": "primary",
       "allowed_params": ["severity", "summary", "title"]
     }
   }
@@ -25,4 +24,4 @@ Rules:
 - at least one of `text_body` or `html_body` is required
 - `to` is required and must be a non-empty array
 - `allowed_params` is optional; if omitted, all placeholders used by the template are allowed
-- `account_label` is optional and is used for reporting only by the current helper scripts
+- account selection comes from the deployment-owned `MAILGATEWAY_ACCOUNT` environment variable rather than the template file

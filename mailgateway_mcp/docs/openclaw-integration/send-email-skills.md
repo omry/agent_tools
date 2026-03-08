@@ -56,6 +56,7 @@ The skill should:
    - `subject`
    - at least one of `text_body` or `html_body`
 2. Resolve the `account` from deployment-owned skill configuration rather than asking the user to choose from MailGateway accounts.
+   In the current helper implementation, this is the deployment-owned `MAILGATEWAY_ACCOUNT` setting.
 3. Prefer plain text body generation unless the user explicitly wants HTML formatting.
 4. Pass the body to the helper through stdin rather than multiline shell arguments.
    The interactive skill should use exactly one of the helper's stdin body flags:
@@ -124,6 +125,7 @@ The skill should:
 
 1. Resolve the requested template or profile from deployment-owned skill configuration.
 2. Resolve the MailGateway account from deployment-owned skill configuration for that template/profile.
+   In the current helper implementation, this is the deployment-owned `MAILGATEWAY_ACCOUNT` setting.
 3. Validate that the requested parameters match the allowed template inputs.
 4. Resolve the final MailGateway payload from that template/profile.
 5. Call `send_email` directly without a final confirmation step.

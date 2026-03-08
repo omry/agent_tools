@@ -11,7 +11,7 @@ from typing import Callable
 _SHARED_SCRIPTS = Path(__file__).resolve().parents[2] / "_shared" / "scripts"
 sys.path.insert(0, str(_SHARED_SCRIPTS))
 
-from mailgateway_mcp_client import call_tool_sync, config_from_env  # noqa: E402
+from mailgateway_mcp_client import account_from_env, call_tool_sync, config_from_env  # noqa: E402
 
 
 def _csv_list(value: str | None) -> list[str]:
@@ -58,16 +58,23 @@ def resolve_bodies(
 
 
 def build_arguments(args: argparse.Namespace) -> dict[str, object]:
-    return build_arguments_with_bodies(args, text_body=args.text_body, html_body=args.html_body)
+    return build_arguments_with_bodies(
+        args,
+        account="primary",
+        text_body=args.text_body,
+        html_body=args.html_body,
+    )
 
 
 def build_arguments_with_bodies(
     args: argparse.Namespace,
     *,
+    account: str,
     text_body: str | None,
     html_body: str | None,
 ) -> dict[str, object]:
     arguments: dict[str, object] = {
+        "account": account,
         "to": _csv_list(args.to),
         "subject": args.subject,
     }
@@ -119,11 +126,19 @@ def run(
     )
 
     config = config_from_env()
-    return call_tool_sync(
+    account = account_from_env()
+    result = call_tool_sync(
         config,
         "send_email",
-        build_arguments_with_bodies(args, text_body=text_body, html_body=html_body),
+        build_arguments_with_bodies(
+            args,
+            account=account,
+            text_body=text_body,
+            html_body=html_body,
+        ),
     )
+    result.setdefault("account", account)
+    return result
 
 
 def main() -> None:
