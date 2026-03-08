@@ -58,7 +58,7 @@ Each configured folder should define at least:
 Access profiles establish default policy:
 
 - `bot`: defaults come from `mail.account_access_profiles.bot`
-- `owner`: defaults come from `mail.account_access_profiles.owner`
+- `personal`: defaults come from `mail.account_access_profiles.personal`
 
 When IMAP is added, write-capable behavior should still be controlled by `account_access_profile` policy and any future guardrails for sensitive accounts.
 
@@ -78,4 +78,4 @@ When IMAP is added, write-capable behavior should still be controlled by `accoun
 ## Follow-up needed before implementation
 
 - write one tool document per IMAP operation
-- decide what approval hook, if any, is required before connecting an owner account
+- decide what approval hook, if any, is required before connecting a personal account

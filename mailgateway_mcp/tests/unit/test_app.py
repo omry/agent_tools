@@ -44,9 +44,9 @@ def _mail_config() -> MailConfig:
                 account_access_profile="bot",
                 smtp=SmtpConfig(),
             ),
-            "owner": AccountConfig(
-                description="Owner IMAP account",
-                account_access_profile="owner",
+            "personal": AccountConfig(
+                description="Personal IMAP account",
+                account_access_profile="personal",
                 sensitivity_tier=AccountSensitivityTier.sensitive,
                 imap=ImapConfig(
                     default_folder="INBOX",
@@ -56,7 +56,7 @@ def _mail_config() -> MailConfig:
         },
         account_access_profiles={
             "bot": AccountAccessProfileConfig(read_only=False),
-            "owner": AccountAccessProfileConfig(read_only=True),
+            "personal": AccountAccessProfileConfig(read_only=True),
         },
     )
 
@@ -72,9 +72,9 @@ def test_list_accounts_returns_normalized_account_summaries() -> None:
 
     assert app.list_accounts() == [
         {
-            "name": "owner",
-            "description": "Owner IMAP account",
-            "account_access_profile": "owner",
+            "name": "personal",
+            "description": "Personal IMAP account",
+            "account_access_profile": "personal",
             "sensitivity_tier": "sensitive",
             "smtp_enabled": False,
             "imap_enabled": True,
@@ -270,9 +270,9 @@ def test_send_email_rejects_unknown_account() -> None:
 def test_send_email_rejects_imap_only_account() -> None:
     app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
 
-    with pytest.raises(ValueError, match="SMTP-enabled account: owner"):
+    with pytest.raises(ValueError, match="SMTP-enabled account: personal"):
         app.send_email(
-            account="owner",
+            account="personal",
             to=["to@example.com"],
             subject="Hello",
             text_body="Plain text body",

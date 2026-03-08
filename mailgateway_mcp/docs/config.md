@@ -52,23 +52,23 @@ mail:
             description: Primary inbox folder.
           Alerts:
             description: Operational notifications.
-    owner:
-      description: Owner account with stricter access policy.
+    personal:
+      description: Personal account with stricter access policy.
       sensitivity_tier: sensitive
-      account_access_profile: owner
+      account_access_profile: personal
       imap:
         host: imap.example.com
         port: 993
-        username: owner@example.com
-        password: ${oc.env: OWNER_IMAP_PASSWORD}
+        username: personal@example.com
+        password: ${oc.env: PERSONAL_IMAP_PASSWORD}
         tls: implicit
         verify_peer: true
         default_folder: INBOX
         folders:
           INBOX:
-            description: Owner inbox.
+            description: Personal inbox.
           Archive:
-            description: Owner archive folder.
+            description: Personal archive folder.
   account_access_profiles:
     bot:
       read_only: false
@@ -87,7 +87,7 @@ mail:
         audit_message_state_changes: true
         audit_message_moves: true
         audit_message_deletes: true
-    owner:
+    personal:
       read_only: true
       smtp_audit:
         enabled: true
@@ -114,7 +114,7 @@ mail:
 - `mail.accounts.<account>.account_access_profile`: required reference to a profile under `mail.account_access_profiles`
 - `mail.account_access_profiles`: required mapping of account access profile definitions
 - `mail.account_access_profiles.bot.read_only`: required
-- `mail.account_access_profiles.owner.read_only`: required
+- `mail.account_access_profiles.personal.read_only`: required
 - `mail.account_access_profiles.<profile>.smtp_audit`: required SMTP audit config for that profile
 - `mail.account_access_profiles.<profile>.imap_audit`: required IMAP audit config for that profile
 

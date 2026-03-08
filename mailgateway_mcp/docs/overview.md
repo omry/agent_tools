@@ -76,7 +76,7 @@ Every tool call should produce structured logs and normalized results so automat
 
 - `account`: the credential and identity boundary used for SMTP submission and IMAP access
 - `folder`: an IMAP folder within an account, such as `INBOX` or `Alerts`
-- `account_access_profile`: a policy profile applied at the account level; the initial profile types are `bot` and `owner`
+- `account_access_profile`: a policy profile applied at the account level; the initial profile types are `bot` and `personal`
 
 This document uses these terms deliberately:
 

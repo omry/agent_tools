@@ -172,7 +172,7 @@ def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
         return {
             "accounts": [
                 {"name": "primary", "smtp_enabled": True, "sensitivity_tier": "standard"},
-                {"name": "owner", "smtp_enabled": False, "sensitivity_tier": "sensitive"},
+                {"name": "personal", "smtp_enabled": False, "sensitivity_tier": "sensitive"},
             ]
         }
 
