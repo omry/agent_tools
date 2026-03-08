@@ -57,7 +57,11 @@ The skill should:
    - at least one of `text_body` or `html_body`
 2. Resolve the `account` from deployment-owned skill configuration rather than asking the user to choose from MailGateway accounts.
 3. Prefer plain text body generation unless the user explicitly wants HTML formatting.
-4. Keep the generated payload narrow and map directly to the MailGateway `send_email` contract.
+4. Pass the body to the helper through stdin rather than multiline shell arguments.
+   The interactive skill should use exactly one of the helper's stdin body flags:
+   - `--text-stdin`
+   - `--html-stdin`
+   Keep CLI body flags only as a manual testing fallback.
 5. Ask for confirmation before submission when:
    - the message body was materially inferred or expanded by the model
    - recipients were inferred rather than directly provided

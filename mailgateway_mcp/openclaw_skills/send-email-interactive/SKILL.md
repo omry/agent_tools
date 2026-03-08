@@ -23,7 +23,9 @@ Workflow:
 3. Apply conditional confirmation:
    - confirm before sending if recipients or message content were materially inferred, expanded, or transformed
    - confirmation is not required only for straightforward user-directed sends with explicit recipients and explicit message content
-4. Run the helper script with explicit arguments.
+4. Run the helper script with explicit arguments for recipients and subject, and pass the body through stdin.
+   Use exactly one of `--text-stdin` or `--html-stdin` to declare the body type.
+   Keep `--text-body` and `--html-body` only for manual testing or simple ad hoc calls.
 5. Report the normalized result returned by the helper.
 
 Do not:

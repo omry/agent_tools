@@ -51,6 +51,112 @@ def test_interactive_build_arguments_normalizes_optional_lists() -> None:
     }
 
 
+def test_interactive_resolve_bodies_uses_stdin_for_text_body() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_stdin_text")
+
+    class Args:
+        text_body = None
+        html_body = None
+        text_stdin = True
+        html_stdin = False
+
+    text_body, html_body = module.resolve_bodies(
+        Args(),
+        stdin_text="Hello\n\nWorld",
+        stdin_is_tty=False,
+    )
+
+    assert text_body == "Hello\n\nWorld"
+    assert html_body is None
+
+
+def test_interactive_resolve_bodies_uses_stdin_for_html_body() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_stdin_html")
+
+    class Args:
+        text_body = None
+        html_body = None
+        text_stdin = False
+        html_stdin = True
+
+    text_body, html_body = module.resolve_bodies(
+        Args(),
+        stdin_text="<p>Hello</p>",
+        stdin_is_tty=False,
+    )
+
+    assert text_body is None
+    assert html_body == "<p>Hello</p>"
+
+
+def test_interactive_resolve_bodies_rejects_combining_stdin_with_body_args() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_conflict")
+
+    class Args:
+        text_body = "Body"
+        html_body = None
+        text_stdin = True
+        html_stdin = False
+
+    with pytest.raises(ValueError, match="cannot combine stdin body input"):
+        module.resolve_bodies(
+            Args(),
+            stdin_text="Hello",
+            stdin_is_tty=False,
+        )
+
+
+def test_interactive_resolve_bodies_requires_explicit_stdin_flag_when_stdin_is_used() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_missing_stdin_flag")
+
+    class Args:
+        text_body = None
+        html_body = None
+        text_stdin = False
+        html_stdin = False
+
+    with pytest.raises(ValueError, match="pass exactly one of --text-stdin or --html-stdin"):
+        module.resolve_bodies(
+            Args(),
+            stdin_text="Hello",
+            stdin_is_tty=False,
+        )
+
+
+def test_interactive_resolve_bodies_rejects_both_stdin_flags() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_both_stdin_flags")
+
+    class Args:
+        text_body = None
+        html_body = None
+        text_stdin = True
+        html_stdin = True
+
+    with pytest.raises(ValueError, match="cannot use both --text-stdin and --html-stdin"):
+        module.resolve_bodies(
+            Args(),
+            stdin_text="Hello",
+            stdin_is_tty=False,
+        )
+
+
+def test_interactive_resolve_bodies_requires_body_when_no_stdin_or_args() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_missing_body")
+
+    class Args:
+        text_body = None
+        html_body = None
+        text_stdin = False
+        html_stdin = False
+
+    with pytest.raises(ValueError, match="at least one of --text-body or --html-body is required"):
+        module.resolve_bodies(
+            Args(),
+            stdin_text=None,
+            stdin_is_tty=True,
+        )
+
+
 def test_predefined_build_payload_renders_template_values() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script")
 

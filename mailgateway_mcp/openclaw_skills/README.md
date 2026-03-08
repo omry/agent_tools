@@ -46,11 +46,12 @@ curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/main/mailgateway_
 4. Smoke-test the interactive skill:
 
 ```bash
-docker exec -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp openclaw \
+printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
+  -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \
-  --subject "MailGateway skill test" \
-  --text-body "Testing the interactive MailGateway skill."
+  --subject "MailGateway skill test"
 ```
 
 ### Updating without losing the installed skills
@@ -183,11 +184,46 @@ docker exec openclaw sh -lc 'find /home/node/.openclaw/skills -maxdepth 3 -name 
 ### 6. Smoke-test the interactive skill
 
 ```bash
-docker exec -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp openclaw \
+printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
+  -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
   --to you@example.com \
   --subject "MailGateway skill test" \
-  --text-body "Testing the interactive MailGateway skill."
+  --text-stdin
+```
+
+### 7. Manual testing notes
+
+For OpenClaw automation, always pass the body through stdin and declare the body type explicitly with exactly one of:
+
+- `--text-stdin`
+- `--html-stdin`
+
+The `--text-body` and `--html-body` flags are kept only for manual ad hoc testing.
+
+HTML body via stdin:
+
+```bash
+printf '<p>Hello Omry</p><p>This is an HTML stdin test.</p><p>Best,<br>Atlas</p>\n' | docker exec -i \
+  -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  openclaw \
+  python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --to you@example.com \
+  --subject "MailGateway HTML stdin test" \
+  --html-stdin
+```
+
+Regression example showing why arg-passed multiline content is bad:
+
+```bash
+docker exec \
+  -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
+  openclaw \
+  python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --to you@example.com \
+  --subject "arg newline regression test" \
+  --text-body 'Hello Omry\n\nThis will keep literal backslash-n sequences.\n\nBest,\nAtlas'
 ```
 
 ## Current target environment
