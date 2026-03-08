@@ -1,7 +1,7 @@
 # RFC: MailGateway MCP Server Overview
 
 - Document ID: `mailgateway-mcp-overview`
-- Version: `0.1.1.dev0`
+- Version: `0.1.1.dev1`
 - Status: `Draft`
 - Authors: `Codex`, `Omry Yadan`
 - Last Updated: `2026-03-07`
