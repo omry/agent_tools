@@ -15,7 +15,7 @@ Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway in
 Use the installer script from GitHub and pin it to a tag or commit:
 
 ```bash
-REF=<git-ref> curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github
+REF=<git-ref>; curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github
 ```
 
 Defaults:
@@ -53,7 +53,7 @@ For pre-push testing from a local checkout, use `--source local`.
 ### Automatic uninstall
 
 ```bash
-REF=<git-ref> curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- uninstall
+REF=<git-ref>; curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- uninstall
 ```
 
 This removes only the MailGateway skill files from `/home/node/.openclaw/skills`. It does not remove `python3-pip`, `httpx`, or `mcp`.
@@ -63,13 +63,13 @@ This removes only the MailGateway skill files from `/home/node/.openclaw/skills`
 Use a different container:
 
 ```bash
-REF=<git-ref> curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github --container my-openclaw
+REF=<git-ref>; curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github --container my-openclaw
 ```
 
 Use a different skill directory inside the container:
 
 ```bash
-REF=<git-ref> curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github --skill-dir /home/node/.openclaw/skills
+REF=<git-ref>; curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github --skill-dir /home/node/.openclaw/skills
 ```
 
 ### Local checkout install
@@ -142,6 +142,29 @@ Add it to the environment source used by the `openclaw` container. In the curren
 ```bash
 /home/node/.openclaw/.env
 ```
+
+### Updating the env without losing the installed skills
+
+In the current deployment, the host path `~/.openclaw` is mounted into the container at `/home/node/.openclaw`.
+
+That means:
+
+- skill files under `~/.openclaw/skills` persist across container recreation
+- editing `~/.openclaw/.env` on the host updates the mounted env file content
+
+Update flow:
+
+1. edit the host env file:
+
+```bash
+nano ~/.openclaw/.env
+```
+
+2. recreate the `openclaw` container so it picks up the updated `--env-file` values
+
+3. rerun the MailGateway installer after recreation
+
+The installed skill files stay on the mounted host path, but Python dependencies like `httpx` and `mcp` are installed into the container filesystem and do not survive container recreation.
 
 ### 7. Smoke-test the interactive skill
 
