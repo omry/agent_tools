@@ -32,6 +32,7 @@ Use this when the caller needs to discover which accounts exist before selecting
       "name": "primary",
       "description": "Bot-owned account for automated email tasks",
       "account_access_profile": "bot",
+      "sensitivity_tier": "standard",
       "smtp_enabled": true,
       "imap_enabled": true,
       "imap_read_only": false
@@ -51,14 +52,17 @@ Expected behavior:
 1. Read the configured account map.
 2. Construct the defined response shape from the configured accounts.
 3. Return stable account names and human-readable descriptions.
-4. Indicate which protocols are enabled for each account.
-5. If `imap_enabled` is `true`, indicate whether IMAP access is read-only under the account's configured `account_access_profile`.
-6. If `imap_enabled` is `false`, omit `imap_read_only`.
+4. Return the configured sensitivity tier for each account.
+   Current tiers are `standard` and `sensitive`.
+5. Indicate which protocols are enabled for each account.
+6. If `imap_enabled` is `true`, indicate whether IMAP access is read-only under the account's configured `account_access_profile`.
+7. If `imap_enabled` is `false`, omit `imap_read_only`.
 
 ## Policy checks
 
 - Return all configured accounts under the current trusted-caller model.
 - Do not expose credentials, transport configuration, recipient-policy configuration, audit configuration, or other sensitive internal settings.
+- Do expose the configured sensitivity tier because interactive callers use it to decide confirmation behavior.
 
 ## Audit behavior
 
@@ -78,6 +82,7 @@ Expected behavior:
 ## Test checklist
 
 - returns all configured accounts
+- returns the configured sensitivity tier for each account
 - omits `imap_read_only` when IMAP is not enabled on an account
 - reflects the configured `account_access_profile`
 - does not expose transport, recipient policy, or audit configuration

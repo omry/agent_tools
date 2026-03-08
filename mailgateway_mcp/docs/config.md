@@ -17,6 +17,7 @@ mail:
   accounts:
     primary:
       description: Bot-owned account for automated email tasks.
+      sensitivity_tier: standard
       account_access_profile: bot
       smtp:
         host: smtp.example.com
@@ -53,6 +54,7 @@ mail:
             description: Operational notifications.
     owner:
       description: Owner account with stricter access policy.
+      sensitivity_tier: sensitive
       account_access_profile: owner
       imap:
         host: imap.example.com
@@ -108,6 +110,7 @@ mail:
 
 - `mail.accounts`: required mapping of configured accounts
 - `mail.accounts.<account>.description`: required human-readable account purpose
+- `mail.accounts.<account>.sensitivity_tier`: optional enum used by interactive callers to decide whether the selected account needs stricter confirmation; current values are `standard` and `sensitive`, default `standard`
 - `mail.accounts.<account>.account_access_profile`: required reference to a profile under `mail.account_access_profiles`
 - `mail.account_access_profiles`: required mapping of account access profile definitions
 - `mail.account_access_profiles.bot.read_only`: required
@@ -154,6 +157,7 @@ Relevant IMAP settings for an account with IMAP enabled:
 - If `mail.accounts.<account>.smtp.tls` is configured, failure to establish the configured TLS mode must fail closed.
 - The `From` identity is server-owned and not caller-controlled in v1.
 - `Reply-To` is omitted or set to the same sender identity in v1.
+- `mail.accounts.<account>.sensitivity_tier` must be a supported enum value.
 - `mail.accounts.<account>.account_access_profile` must match a key under `mail.account_access_profiles`.
 - If `mail.accounts.<account>.imap.default_folder` is set, it must match a key under `mail.accounts.<account>.imap.folders`.
 
@@ -167,4 +171,5 @@ Relevant IMAP settings for an account with IMAP enabled:
 
 - The initial config shape already includes both SMTP and IMAP, even though IMAP implementation is deferred to stage 2.
 - Account-level policy and audit are defined through `account_access_profile`.
+- Account sensitivity is defined per account rather than per access profile because interactive sender-choice and confirmation behavior depend on the specific account being used.
 - Folder-specific policy and audit overrides are intentionally out of scope for the default shape.

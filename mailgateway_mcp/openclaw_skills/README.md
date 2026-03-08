@@ -10,22 +10,36 @@ They are meant to be installed into the running `openclaw` container as user-man
 
 Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway installer does not modify `/app/skills`.
 
+## Skill configuration
+
+Use the OpenClaw container env for the shared MailGateway endpoint:
+
+```bash
+MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp
+```
+
+For the current VM setup, that is usually easiest to manage through:
+
+```bash
+~/.openclaw/.env
+```
+
+Recommended split:
+
+- keep `MAILGATEWAY_MCP_URL` in the shared container env
+- keep predefined account selection in the local template registry next to the predefined skill, typically `/home/node/.openclaw/skills/send-email-predefined/templates.json`
+- let the interactive skill choose the account dynamically at runtime
+
 ## Recommended flow
 
 ### First installation
 
 1. Set the MailGateway endpoint in the host env file used by the `openclaw` container.
 
-   For the current VM setup, the recommended value is:
+   For the current VM setup, the recommended endpoint is:
 
    ```bash
    MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp
-   ```
-
-   Set the deployment-owned MailGateway account there as well:
-
-   ```bash
-   MAILGATEWAY_ACCOUNT=primary
    ```
 
    That works for the current deployment because the `openclaw` container is using host networking.
@@ -35,7 +49,7 @@ Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway in
    - if `openclaw` is using host networking, `127.0.0.1` is usually correct
    - if `openclaw` is on a bridge network, it may need the host gateway address or another reachable host/interface address instead
 
-   In the current container layout, the env file is typically:
+   In the current container layout, that env file is typically:
 
    ```bash
    ~/.openclaw/.env
@@ -43,20 +57,37 @@ Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway in
 
 2. Recreate the `openclaw` container so it picks up the updated `--env-file` values.
 
-3. Run the installer script from GitHub:
+3. If you plan to use the predefined skill, review the sample template registry that is installed with it.
+
+   In the installed layout, it lives at:
+
+   ```bash
+   ~/.openclaw/skills/send-email-predefined/templates.json
+   ```
+
+   Each template in that file is fixed to a specific MailGateway account through its `account` field.
+
+   The sample file includes:
+
+   - `ops-alert`, which sends from the bot account (`primary`)
+   - `personal-followup`, which sends from the user account (`omry`)
+
+   You can add more templates to that file directly or ask OpenClaw to help edit it.
+
+4. Run the installer script from GitHub:
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/main/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --source github
 ```
 
-4. Smoke-test the interactive skill:
+5. Smoke-test the interactive skill:
 
 ```bash
 printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
-  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --account primary \
   --to you@example.com \
   --subject "MailGateway skill test" \
   --text-stdin
@@ -79,7 +110,7 @@ Update flow:
 nano ~/.openclaw/.env
 ```
 
-2. recreate the `openclaw` container so it picks up the updated `--env-file` values
+2. recreate the `openclaw` container so it picks up updated environment values, such as `MAILGATEWAY_MCP_URL` from `~/.openclaw/.env`
 
 3. rerun the MailGateway installer
 
@@ -194,9 +225,9 @@ docker exec openclaw sh -lc 'find /home/node/.openclaw/skills -maxdepth 3 -name 
 ```bash
 printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
-  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --account primary \
   --to you@example.com \
   --subject "MailGateway skill test" \
   --text-stdin
@@ -204,21 +235,33 @@ printf 'Hello Omry\n\nThis is a MailGateway stdin test.\n\nBest,\nAtlas\n' | doc
 
 ### 7. Manual testing notes
 
-For OpenClaw automation, always pass the body through stdin and declare the body type explicitly with exactly one of:
+The examples below run the installed skill scripts directly inside the `openclaw` container with `docker exec`. This is only for manual debugging and smoke-testing. Normal OpenClaw usage does not require `docker exec`.
+
+When testing the interactive skill manually:
+
+- prefer passing the email body through stdin
+- if you use stdin, declare the body type with exactly one of:
 
 - `--text-stdin`
 - `--html-stdin`
 
-The `--text-body` and `--html-body` flags are kept only for manual ad hoc testing.
+The `--text-body` and `--html-body` flags are kept only for simple ad hoc tests.
+
+If you use `docker exec -e ...`, those temporary env vars apply only to that one debug command. They do not change OpenClaw's saved configuration.
+
+For the predefined skill:
+
+- the template registry must define an `account` for each template
+- the registry file is `templates.json` next to the predefined skill
 
 HTML body via stdin:
 
 ```bash
 printf '<p>Hello Omry</p><p>This is an HTML stdin test.</p><p>Best,<br>Atlas</p>\n' | docker exec -i \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
-  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --account primary \
   --to you@example.com \
   --subject "MailGateway HTML stdin test" \
   --html-stdin
@@ -229,9 +272,9 @@ Regression example showing why arg-passed multiline content is bad:
 ```bash
 docker exec \
   -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp \
-  -e MAILGATEWAY_ACCOUNT=primary \
   openclaw \
   python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --account primary \
   --to you@example.com \
   --subject "arg newline regression test" \
   --text-body 'Hello Omry\n\nThis will keep literal backslash-n sequences.\n\nBest,\nAtlas'

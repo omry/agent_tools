@@ -4,6 +4,7 @@ from mailgateway_mcp.app import MailGatewayApp
 from mailgateway_mcp.config import (
     AccountAccessProfileConfig,
     AccountConfig,
+    AccountSensitivityTier,
     ImapConfig,
     ImapFolderConfig,
     MailConfig,
@@ -46,6 +47,7 @@ def _mail_config() -> MailConfig:
             "owner": AccountConfig(
                 description="Owner IMAP account",
                 account_access_profile="owner",
+                sensitivity_tier=AccountSensitivityTier.sensitive,
                 imap=ImapConfig(
                     default_folder="INBOX",
                     folders={"INBOX": ImapFolderConfig(description="Inbox")},
@@ -73,6 +75,7 @@ def test_list_accounts_returns_normalized_account_summaries() -> None:
             "name": "owner",
             "description": "Owner IMAP account",
             "account_access_profile": "owner",
+            "sensitivity_tier": "sensitive",
             "smtp_enabled": False,
             "imap_enabled": True,
             "imap_read_only": True,
@@ -81,6 +84,7 @@ def test_list_accounts_returns_normalized_account_summaries() -> None:
             "name": "primary",
             "description": "Primary SMTP account",
             "account_access_profile": "bot",
+            "sensitivity_tier": "standard",
             "smtp_enabled": True,
             "imap_enabled": False,
         },
@@ -93,6 +97,7 @@ def test_list_accounts_reports_writable_imap_account() -> None:
             "alerts": AccountConfig(
                 description="Alerts account",
                 account_access_profile="bot",
+                sensitivity_tier=AccountSensitivityTier.standard,
                 imap=ImapConfig(
                     default_folder="INBOX",
                     folders={"INBOX": ImapFolderConfig(description="Inbox")},
@@ -110,6 +115,7 @@ def test_list_accounts_reports_writable_imap_account() -> None:
             "name": "alerts",
             "description": "Alerts account",
             "account_access_profile": "bot",
+            "sensitivity_tier": "standard",
             "smtp_enabled": False,
             "imap_enabled": True,
             "imap_read_only": False,
@@ -123,6 +129,7 @@ def test_list_accounts_reports_account_with_both_protocols() -> None:
             "primary": AccountConfig(
                 description="Primary full account",
                 account_access_profile="bot",
+                sensitivity_tier=AccountSensitivityTier.standard,
                 smtp=SmtpConfig(),
                 imap=ImapConfig(
                     default_folder="INBOX",
@@ -141,6 +148,7 @@ def test_list_accounts_reports_account_with_both_protocols() -> None:
             "name": "primary",
             "description": "Primary full account",
             "account_access_profile": "bot",
+            "sensitivity_tier": "standard",
             "smtp_enabled": True,
             "imap_enabled": True,
             "imap_read_only": False,
@@ -219,6 +227,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
             "primary": AccountConfig(
                 description="Primary SMTP account",
                 account_access_profile="bot",
+                sensitivity_tier=AccountSensitivityTier.standard,
                 smtp=SmtpConfig(
                     from_email="agent@example.com",
                     from_name="Jöhn Döe",
@@ -277,6 +286,7 @@ def test_send_email_uses_selected_account_smtp_config() -> None:
             "primary": AccountConfig(
                 description="Primary SMTP account",
                 account_access_profile="bot",
+                sensitivity_tier=AccountSensitivityTier.standard,
                 smtp=SmtpConfig(
                     from_email="agent@example.com",
                     from_name="Primary Sender",
@@ -285,6 +295,7 @@ def test_send_email_uses_selected_account_smtp_config() -> None:
             "alerts": AccountConfig(
                 description="Alerts SMTP account",
                 account_access_profile="bot",
+                sensitivity_tier=AccountSensitivityTier.sensitive,
                 smtp=SmtpConfig(
                     from_email="alerts@example.com",
                     from_name="Alerts Sender",

@@ -49,6 +49,7 @@ class MailGatewayApp:
                 "name": account_name,
                 "description": account.description,
                 "account_access_profile": account.account_access_profile,
+                "sensitivity_tier": account.sensitivity_tier.value,
                 "smtp_enabled": account.smtp is not None,
                 "imap_enabled": imap_enabled,
             }

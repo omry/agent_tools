@@ -39,15 +39,6 @@ def config_from_env() -> MailGatewayClientConfig:
         bearer_token=bearer_token,
         timeout_seconds=timeout_seconds,
     )
-
-
-def account_from_env() -> str:
-    account = os.environ.get("MAILGATEWAY_ACCOUNT", "").strip()
-    if not account:
-        raise ValueError("MAILGATEWAY_ACCOUNT is required")
-    return account
-
-
 def parse_json_argument(value: str | None, *, default: dict[str, Any] | None = None) -> dict[str, Any]:
     if value is None:
         return default or {}

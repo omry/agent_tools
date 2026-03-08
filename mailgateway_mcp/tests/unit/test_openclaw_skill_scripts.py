@@ -163,10 +163,52 @@ def test_interactive_resolve_bodies_requires_body_when_no_stdin_or_args() -> Non
         )
 
 
-def test_interactive_run_passes_configured_account(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_accounts")
+
+    def fake_call_tool_sync(config, tool_name, arguments):
+        assert tool_name == "list_accounts"
+        assert arguments == {}
+        return {
+            "accounts": [
+                {"name": "primary", "smtp_enabled": True, "sensitivity_tier": "standard"},
+                {"name": "owner", "smtp_enabled": False, "sensitivity_tier": "sensitive"},
+            ]
+        }
+
+    module.call_tool_sync = fake_call_tool_sync
+
+    assert module.list_smtp_accounts(object()) == [
+        {"name": "primary", "smtp_enabled": True, "sensitivity_tier": "standard"}
+    ]
+
+
+def test_interactive_select_account_requires_explicit_choice_when_multiple_accounts() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_multi_accounts")
+    accounts = [
+        {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"},
+        {"name": "omry", "sensitivity_tier": "sensitive", "description": "Personal"},
+    ]
+
+    with pytest.raises(ValueError, match="multiple SMTP-enabled accounts are available"):
+        module.select_account(None, accounts)
+
+
+def test_interactive_select_account_allows_single_smtp_account_without_explicit_choice() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_single_account")
+    accounts = [
+        {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"},
+    ]
+
+    assert module.select_account(None, accounts) == accounts[0]
+
+
+def test_interactive_run_passes_selected_account(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_run_account")
 
     class Args:
+        list_accounts = False
+        account = "primary"
         to = "a@example.com"
         subject = "Hello"
         text_body = "Body"
@@ -175,11 +217,18 @@ def test_interactive_run_passes_configured_account(monkeypatch: pytest.MonkeyPat
         html_stdin = False
         cc = None
         bcc = None
+        confirm_sensitive_account = False
 
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(module, "config_from_env", lambda: object())
-    monkeypatch.setattr(module, "account_from_env", lambda: "primary")
+    monkeypatch.setattr(
+        module,
+        "list_smtp_accounts",
+        lambda config: [
+            {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"}
+        ],
+    )
 
     def fake_call_tool_sync(config, tool_name, arguments):
         captured["tool_name"] = tool_name
@@ -206,6 +255,79 @@ def test_interactive_run_passes_configured_account(monkeypatch: pytest.MonkeyPat
     assert result == {
         "ok": True,
         "account": "primary",
+        "account_description": "Bot",
+        "account_sensitivity_tier": "standard",
+    }
+
+
+def test_interactive_run_requires_confirmation_for_sensitive_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_sensitive_account")
+
+    class Args:
+        list_accounts = False
+        account = "omry"
+        to = "a@example.com"
+        subject = "Hello"
+        text_body = "Body"
+        html_body = None
+        text_stdin = False
+        html_stdin = False
+        cc = None
+        bcc = None
+        confirm_sensitive_account = False
+
+    monkeypatch.setattr(module, "config_from_env", lambda: object())
+    monkeypatch.setattr(
+        module,
+        "list_smtp_accounts",
+        lambda config: [
+            {"name": "omry", "sensitivity_tier": "sensitive", "description": "Personal"}
+        ],
+    )
+
+    with pytest.raises(ValueError, match=r"selected account omry \(Personal\) is sensitive"):
+        module.run(
+            Args(),
+            stdin_reader=lambda: "",
+            stdin_is_tty=True,
+        )
+
+
+def test_interactive_run_lists_accounts_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_list_mode")
+
+    class Args:
+        list_accounts = True
+        account = None
+        to = None
+        subject = None
+        text_body = None
+        html_body = None
+        text_stdin = False
+        html_stdin = False
+        cc = None
+        bcc = None
+        confirm_sensitive_account = False
+
+    monkeypatch.setattr(module, "config_from_env", lambda: object())
+    monkeypatch.setattr(
+        module,
+        "list_smtp_accounts",
+        lambda config: [
+            {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"}
+        ],
+    )
+
+    assert module.run(
+        Args(),
+        stdin_reader=lambda: "",
+        stdin_is_tty=True,
+    ) == {
+        "accounts": [
+            {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"}
+        ]
     }
 
 
@@ -213,6 +335,7 @@ def test_predefined_build_payload_renders_template_values() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script")
 
     template = {
+        "account": "primary",
         "subject": "Alert: {title}",
         "text_body": "Severity: {severity}",
         "to": ["ops+{severity}@example.com"],
@@ -222,7 +345,6 @@ def test_predefined_build_payload_renders_template_values() -> None:
     assert module.build_payload(
         template,
         {"title": "Disk Full", "severity": "critical"},
-        account="primary",
     ) == {
         "account": "primary",
         "to": ["ops+critical@example.com"],
@@ -236,6 +358,7 @@ def test_predefined_build_payload_rejects_unexpected_params() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script_unexpected")
 
     template = {
+        "account": "primary",
         "subject": "Alert: {title}",
         "text_body": "{summary}",
         "to": ["ops@example.com"],
@@ -246,23 +369,28 @@ def test_predefined_build_payload_rejects_unexpected_params() -> None:
         module.build_payload(
             template,
             {"title": "Disk Full", "summary": "bad"},
-            account="primary",
+        )
+
+def test_predefined_build_payload_requires_account() -> None:
+    module = _load_module(PREDEFINED_PATH, "predefined_skill_script_missing_account")
+
+    template = {
+        "subject": "Alert: {title}",
+        "text_body": "{summary}",
+        "to": ["ops@example.com"],
+    }
+
+    with pytest.raises(ValueError, match="template account is required"):
+        module.build_payload(
+            template,
+            {"title": "Disk Full", "summary": "bad"},
         )
 
 
-def test_shared_account_from_env_requires_value(monkeypatch: pytest.MonkeyPatch) -> None:
-    module = _load_module(SHARED_PATH, "shared_skill_client_account")
-    monkeypatch.delenv("MAILGATEWAY_ACCOUNT", raising=False)
+def test_predefined_default_registry_path_points_next_to_skill() -> None:
+    module = _load_module(PREDEFINED_PATH, "predefined_skill_script_registry_path")
 
-    with pytest.raises(ValueError, match="MAILGATEWAY_ACCOUNT is required"):
-        module.account_from_env()
-
-
-def test_shared_account_from_env_reads_value(monkeypatch: pytest.MonkeyPatch) -> None:
-    module = _load_module(SHARED_PATH, "shared_skill_client_account_ok")
-    monkeypatch.setenv("MAILGATEWAY_ACCOUNT", "primary")
-
-    assert module.account_from_env() == "primary"
+    assert module.default_registry_path() == PREDEFINED_PATH.parents[1] / "templates.json"
 
 
 def test_shared_parse_json_argument_requires_object() -> None:

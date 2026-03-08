@@ -11,10 +11,11 @@ from typing import Any
 
 
 _SHARED_SCRIPTS = Path(__file__).resolve().parents[2] / "_shared" / "scripts"
+_SKILL_ROOT = Path(__file__).resolve().parents[1]
+_DEFAULT_TEMPLATE_REGISTRY = _SKILL_ROOT / "templates.json"
 sys.path.insert(0, str(_SHARED_SCRIPTS))
 
 from mailgateway_mcp_client import call_tool_sync, config_from_env, parse_json_argument  # noqa: E402
-from mailgateway_mcp_client import account_from_env  # noqa: E402
 
 
 def _template_fields(value: Any) -> set[str]:
@@ -52,17 +53,22 @@ def load_registry(path: Path) -> dict[str, Any]:
     return data
 
 
+def default_registry_path() -> Path:
+    return _DEFAULT_TEMPLATE_REGISTRY
+
+
 def build_payload(
     template: dict[str, Any],
     params: dict[str, Any],
-    *,
-    account: str,
 ) -> dict[str, Any]:
+    account = template.get("account")
     subject = template.get("subject")
     text_body = template.get("text_body")
     html_body = template.get("html_body")
     to_values = template.get("to")
 
+    if not isinstance(account, str) or not account.strip():
+        raise ValueError("template account is required")
     if not isinstance(subject, str):
         raise ValueError("template subject is required")
     if not isinstance(to_values, list) or not to_values:
@@ -143,10 +149,12 @@ def main() -> None:
     args = parser.parse_args()
 
     config = config_from_env()
-    registry_path_raw = os.environ.get("MAILGATEWAY_PREDEFINED_TEMPLATES", "").strip()
-    if not registry_path_raw:
-        parser.error("MAILGATEWAY_PREDEFINED_TEMPLATES is required")
-    registry_location = Path(registry_path_raw)
+    registry_location = default_registry_path()
+    if not registry_location.is_file():
+        parser.error(
+            f"template registry not found at {registry_location}; "
+            "place templates.json next to the predefined skill"
+        )
 
     registry = load_registry(registry_location)
     templates = registry["templates"]
@@ -154,15 +162,10 @@ def main() -> None:
         parser.error(f"unknown template: {args.template}")
 
     params = parse_json_argument(args.params_json)
-    account = account_from_env()
-    payload = build_payload(
-        templates[args.template],
-        params,
-        account=account,
-    )
+    payload = build_payload(templates[args.template], params)
     result = call_tool_sync(config, "send_email", payload)
     result.setdefault("template", args.template)
-    result.setdefault("account", account)
+    result.setdefault("account", payload["account"])
 
     print(json.dumps(result, indent=2, sort_keys=True))
 

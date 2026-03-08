@@ -20,7 +20,6 @@ These skills stay separate because they have different safety rules, different a
 Both skills should:
 
 - talk to MailGateway MCP through the temporary skill-local MCP-over-HTTP shim
-- resolve the MailGateway account from deployment-owned skill configuration
 - call `send_email` for the actual submission
 - return a normalized short result to OpenClaw rather than raw MCP transport details
 - stay MailGateway-specific instead of trying to behave like a generic MCP client
@@ -55,19 +54,21 @@ The skill should:
    - `to`
    - `subject`
    - at least one of `text_body` or `html_body`
-2. Resolve the `account` from deployment-owned skill configuration rather than asking the user to choose from MailGateway accounts.
-   In the current helper implementation, this is the deployment-owned `MAILGATEWAY_ACCOUNT` setting.
-3. Prefer plain text body generation unless the user explicitly wants HTML formatting.
-4. Pass the body to the helper through stdin rather than multiline shell arguments.
+2. Discover available SMTP-enabled accounts through `list_accounts`.
+3. Choose an explicit `account` from that result set instead of using a deployment-fixed account.
+   If more than one account is available and the correct one is not clear, the skill should ask rather than guess.
+4. Prefer plain text body generation unless the user explicitly wants HTML formatting.
+5. Pass the body to the helper through stdin rather than multiline shell arguments.
    The interactive skill should use exactly one of the helper's stdin body flags:
    - `--text-stdin`
    - `--html-stdin`
    Keep CLI body flags only as a manual testing fallback.
-5. Ask for confirmation before submission when:
+6. Ask for confirmation before submission when:
    - the message body was materially inferred or expanded by the model
    - recipients were inferred rather than directly provided
    - the action looks higher risk than a straightforward user-directed send
-6. Call `send_email` only after the interactive skill's conditional confirmation rule is satisfied.
+   - the selected account has `sensitivity_tier: sensitive`
+7. Call `send_email` only after the interactive skill's conditional confirmation rule is satisfied.
 
 ### Confirmation policy
 
@@ -81,6 +82,13 @@ The skill may submit without an extra confirmation only when all of these are tr
 - there is no sign that the send is unusually risky or ambiguous
 
 Otherwise, the skill should stop and ask for explicit final confirmation before calling `send_email`.
+
+Sensitive accounts are stricter than the base rule:
+
+- the confirmation should name the selected account and include its human-readable `description`, such as a bot-owned or personal account label
+- if the selected account has `sensitivity_tier: sensitive`, explicit final confirmation is always required
+- the helper/runtime should enforce that stricter gate rather than relying only on prompt wording
+- the sensitivity tier comes from MailGateway `list_accounts`, not from OpenClaw-local metadata
 
 ### Output to OpenClaw
 
@@ -115,7 +123,7 @@ This skill should accept only a narrow predefined invocation shape, such as:
 
 - template or profile name
 - required template parameters
-- no arbitrary account selection; account resolution is deployment-owned unless a tightly constrained override is explicitly configured
+- no arbitrary account selection; account resolution is fixed by the selected template/profile
 
 It must not accept arbitrary freeform recipients or arbitrary freeform message bodies.
 
@@ -124,8 +132,8 @@ It must not accept arbitrary freeform recipients or arbitrary freeform message b
 The skill should:
 
 1. Resolve the requested template or profile from deployment-owned skill configuration.
-2. Resolve the MailGateway account from deployment-owned skill configuration for that template/profile.
-   In the current helper implementation, this is the deployment-owned `MAILGATEWAY_ACCOUNT` setting.
+2. Resolve the MailGateway account from the selected template/profile.
+   In the current helper implementation, each template in the local `templates.json` registry carries its own fixed `account` value.
 3. Validate that the requested parameters match the allowed template inputs.
 4. Resolve the final MailGateway payload from that template/profile.
 5. Call `send_email` directly without a final confirmation step.
@@ -138,7 +146,7 @@ That is only acceptable because:
 
 - recipients are preapproved
 - the body shape is preapproved
-- the account is fixed or tightly constrained
+- the account is fixed by the selected template/profile
 
 If a request falls outside those constraints, this skill should reject it instead of degrading into interactive freeform composition.
 

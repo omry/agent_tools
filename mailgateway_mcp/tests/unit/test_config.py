@@ -5,6 +5,7 @@ from omegaconf import DictConfig
 from mailgateway_mcp.config import (
     AccountConfig,
     AccountAccessProfileConfig,
+    AccountSensitivityTier,
     AppConfig,
     ImapConfig,
     ImapFolderConfig,
@@ -33,6 +34,7 @@ def test_compose_config_returns_hydra_config() -> None:
     assert cfg.mail.accounts.primary.smtp.host == "localhost"
     assert cfg.mail.accounts.primary.smtp.port == 587
     assert cfg.mail.accounts.primary.smtp.from_email == "agent@example.com"
+    assert cfg.mail.accounts.primary.sensitivity_tier == AccountSensitivityTier.standard
     assert cfg.mail.accounts.primary.smtp.verify_peer is True
     assert cfg.mail.account_access_profiles.bot.read_only is False
 
@@ -134,8 +136,8 @@ def test_app_config_rejects_account_without_any_protocols() -> None:
                     )
                 },
                 account_access_profiles={"bot": AccountAccessProfileConfig()},
-            )
         )
+    )
 
 
 def test_app_config_accepts_smtp_only_account() -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Protocol
 
 from hydra.core.config_store import ConfigStore
@@ -9,6 +10,10 @@ from hydra.core.config_store import ConfigStore
 
 _SMTP_TLS_MODES = {"none", "starttls", "implicit"}
 _IMAP_TLS_MODES = {"none", "starttls", "implicit"}
+
+class AccountSensitivityTier(str, Enum):
+    standard = "standard"
+    sensitive = "sensitive"
 
 
 @dataclass
@@ -113,6 +118,7 @@ class AccountAccessProfileConfig:
 class AccountConfig:
     description: str = ""
     account_access_profile: str = "bot"
+    sensitivity_tier: AccountSensitivityTier = AccountSensitivityTier.standard
     smtp: SmtpConfig | None = None
     imap: ImapConfig | None = None
 
@@ -185,6 +191,7 @@ class ImapConfigLike(Protocol):
 class AccountConfigLike(Protocol):
     description: str
     account_access_profile: str
+    sensitivity_tier: AccountSensitivityTier | str
     smtp: SmtpConfigLike | None
     imap: ImapConfigLike | None
 
