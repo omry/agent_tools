@@ -10,13 +10,73 @@ They are meant to be installed into the running `openclaw` container as user-man
 
 Built-in OpenClaw skills live separately under `/app/skills`. The MailGateway installer does not modify `/app/skills`.
 
-## Recommended: automatic install
+## Recommended flow
 
-Use the installer script from GitHub and pin it to a tag or commit:
+### First installation
+
+1. Set the MailGateway endpoint in the host env file used by the `openclaw` container.
+
+   For the current VM setup, the recommended value is:
+
+   ```bash
+   MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp
+   ```
+
+   That works for the current deployment because the `openclaw` container is using host networking.
+
+   This value depends on Docker networking:
+
+   - if `openclaw` is using host networking, `127.0.0.1` is usually correct
+   - if `openclaw` is on a bridge network, it may need the host gateway address or another reachable host/interface address instead
+
+   In the current container layout, the env file is typically:
+
+   ```bash
+   ~/.openclaw/.env
+   ```
+
+2. Recreate the `openclaw` container so it picks up the updated `--env-file` values.
+
+3. Run the installer script from GitHub:
 
 ```bash
-REF=<git-ref>; curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/${REF}/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --ref "${REF}" --source github
+curl -fsSL "https://raw.githubusercontent.com/omry/agent_tools/main/mailgateway_mcp/openclaw_skills/install-openclaw-skills.sh" | bash -s -- install --source github
 ```
+
+4. Smoke-test the interactive skill:
+
+```bash
+docker exec -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp openclaw \
+  python3 /home/node/.openclaw/skills/send-email-interactive/scripts/send_email_interactive.py \
+  --to you@example.com \
+  --subject "MailGateway skill test" \
+  --text-body "Testing the interactive MailGateway skill."
+```
+
+### Updating without losing the installed skills
+
+The host path `~/.openclaw` is mounted into the container at `/home/node/.openclaw`.
+
+That means:
+
+- skill files under `~/.openclaw/skills` persist across container recreation
+- editing `~/.openclaw/.env` on the host updates the mounted env file content
+
+Update flow:
+
+1. edit the host env file:
+
+```bash
+nano ~/.openclaw/.env
+```
+
+2. recreate the `openclaw` container so it picks up the updated `--env-file` values
+
+3. rerun the MailGateway installer
+
+The installed skill files stay on the mounted host path, but Python dependencies like `httpx` and `mcp` are installed into the container filesystem and do not survive container recreation.
+
+## Installer details
 
 Defaults:
 
@@ -120,53 +180,7 @@ tar -C ~/openclaw-skill-staging/openclaw_skills -cf - _shared send-email-interac
 docker exec openclaw sh -lc 'find /home/node/.openclaw/skills -maxdepth 3 -name SKILL.md -o -name mailgateway_mcp_client.py'
 ```
 
-### 6. Configure the MailGateway endpoint
-
-The skills require `MAILGATEWAY_MCP_URL` in the `openclaw` container environment.
-
-For the current VM setup, the recommended value is:
-
-```bash
-MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp
-```
-
-That works for the current deployment because the `openclaw` container is using host networking.
-
-This value depends on Docker networking:
-
-- if `openclaw` is using host networking, `127.0.0.1` is usually correct
-- if `openclaw` is on a bridge network, it may need the host gateway address or another reachable host/interface address instead
-
-Add it to the environment source used by the `openclaw` container. In the current container layout, the env file is typically:
-
-```bash
-/home/node/.openclaw/.env
-```
-
-### Updating the env without losing the installed skills
-
-In the current deployment, the host path `~/.openclaw` is mounted into the container at `/home/node/.openclaw`.
-
-That means:
-
-- skill files under `~/.openclaw/skills` persist across container recreation
-- editing `~/.openclaw/.env` on the host updates the mounted env file content
-
-Update flow:
-
-1. edit the host env file:
-
-```bash
-nano ~/.openclaw/.env
-```
-
-2. recreate the `openclaw` container so it picks up the updated `--env-file` values
-
-3. rerun the MailGateway installer after recreation
-
-The installed skill files stay on the mounted host path, but Python dependencies like `httpx` and `mcp` are installed into the container filesystem and do not survive container recreation.
-
-### 7. Smoke-test the interactive skill
+### 6. Smoke-test the interactive skill
 
 ```bash
 docker exec -e MAILGATEWAY_MCP_URL=http://127.0.0.1:8025/mcp openclaw \
