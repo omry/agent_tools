@@ -1,0 +1,84 @@
+# Decision: OpenClaw Wrapper Skills via a Temporary MCP-over-HTTP Shim
+
+## Context
+
+MailGateway MCP is intended to be used by an OpenClaw installation.
+
+The current MailGateway design assumes a narrow MCP surface with a trusted internal caller. OpenClaw does not yet support MCP natively, so it cannot consume the server directly in the intended way.
+
+Without an interim design, there are two weak alternatives:
+
+- embed MailGateway-specific behavior directly into OpenClaw prompts or ad hoc workflow logic
+- build a dummy non-MCP HTTP surface around MailGateway
+
+Neither of those fits the current MailGateway design goals well. A dummy HTTP surface also gets weaker if MailGateway later needs more MCP features, and it would still be temporary and retired once OpenClaw gains native MCP support.
+
+## Decision
+
+Use OpenClaw wrapper skills that call MailGateway MCP directly over HTTP through a temporary MailGateway-specific MCP shim in the skill runtime.
+
+Make the temporary OpenClaw integration split into two separate skill surfaces:
+
+- an interactive send skill with conditional confirmation
+- a predefined unattended send skill without confirmation
+
+Do not embed MailGateway-specific sending logic directly into OpenClaw prompts.
+
+Implement only a narrow MailGateway-specific MCP subset needed for the current OpenClaw integration.
+
+Design that shim around MailGateway tool invocation rather than SMTP-only special cases so future MailGateway IMAP tools can be added without a second integration redesign.
+
+Do not build a generic MCP client.
+
+Do not introduce a separate dummy business HTTP API.
+
+Do not treat this shim as native OpenClaw MCP support.
+
+## Motivation
+
+This decision keeps coupling to OpenClaw internals low. The OpenClaw-specific behavior is isolated in a temporary wrapper layer instead of leaking into the MailGateway server design.
+
+This decision preserves MailGateway's intended narrow MCP surface. MailGateway remains designed around its real MCP contract instead of drifting into a throwaway business HTTP API.
+
+This decision scales better than a dummy HTTP surface if MailGateway later needs additional MCP features, because the temporary integration continues to speak the real MailGateway protocol rather than a separate compatibility contract.
+
+This decision still keeps the interim integration intentionally low-scope. The shim is narrow, MailGateway-specific, and temporary rather than a reusable MCP client investment.
+
+This decision also leaves room for the planned MailGateway IMAP stage. The shim can remain MailGateway-specific while still being structured to add future IMAP tool calls instead of being tightly coupled to the initial SMTP send flow.
+
+This decision provides a clean migration path. Once OpenClaw supports native MCP, OpenClaw can call MailGateway MCP directly and both temporary layers can be removed:
+
+- the wrapper skills
+- the skill-side MCP shim
+
+This decision creates a clearer safety boundary between attended and unattended sending. Interactive sending and predefined unattended sending have different confirmation expectations and should not rely on a single ambiguous skill surface.
+
+This decision also matches the current MailGateway trust model. The existing design assumes trusted internal callers, so the interim shim should remain an internal compatibility layer rather than a broadly exposed public API.
+
+## Consequences
+
+The interim OpenClaw path introduces two short-lived integration components:
+
+- wrapper skills that present OpenClaw-friendly behavior
+- a MailGateway-specific MCP-over-HTTP shim inside the skill runtime
+
+This places temporary protocol logic in the OpenClaw integration layer instead of in a separate business API surface.
+
+The shim is intentionally MailGateway-specific and is not reusable infrastructure for arbitrary MCP servers.
+
+The shim therefore needs a small internal structure that can grow from the initial SMTP tools to future MailGateway IMAP tools without becoming a generic MCP framework.
+
+Interactive and unattended sending will need separate operational and documentation treatment because they are intentionally separate skill surfaces.
+
+## Deferred future change
+
+When OpenClaw gains native MCP support, replace the compatibility path with direct OpenClaw-to-MailGateway MCP integration.
+
+At that point, retire both temporary layers:
+
+- retire the OpenClaw wrapper skills
+- retire the skill-side MCP shim
+
+The long-term target is:
+
+`OpenClaw -> MailGateway MCP`

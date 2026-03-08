@@ -8,6 +8,8 @@ outfile=${1:-"$script_dir/mailgateway_mcp_design_docs.md"}
 docs=(
   "$script_dir/overview.md"
   "$script_dir/architecture.md"
+  "$script_dir/openclaw-integration/README.md"
+  "$script_dir/openclaw-integration/wrapper-skill-decision.md"
   "$script_dir/config.md"
   "$script_dir/policies.md"
   "$script_dir/errors.md"
