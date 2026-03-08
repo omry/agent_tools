@@ -60,3 +60,19 @@ Track agreed follow-up work that is not specific to tests.
     1. Add account-level or skill-level config to control whether bot-signing is enabled for personal-account sends.
     2. Define how the signature text is injected for text and HTML bodies.
     3. Update interactive skill behavior and docs once the policy is decided.
+
+- Add startup logging for MailGateway version and non-sensitive config summary
+  - Why: operators need a quick sanity check that the expected build and account layout are running without exposing secrets
+  - Status: `todo`
+  - Steps:
+    1. Log the MailGateway package/server version at startup.
+    2. Log a basic non-sensitive config summary such as transport, bind address, account names, enabled protocols, and sensitivity tiers.
+    3. Ensure no secrets, credentials, or raw env values are emitted in those startup logs.
+
+- Improve the OpenClaw skill installer with file-change visibility
+  - Why: operators should be able to see exactly which skill files are being added or updated during installation
+  - Status: `todo`
+  - Steps:
+    1. Detect which installed files would change copying them into the container (dry mode) or during in real installation.
+    2. Print a concise diff or change summary during installation.
+    3. Keep the output readable without dumping large file contents by default.
