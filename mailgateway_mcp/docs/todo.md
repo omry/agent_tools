@@ -44,3 +44,11 @@ Track agreed follow-up work that is not specific to tests.
     1. Add `mypy` to the development toolchain.
     2. Introduce a static test target alongside the existing automated test suite.
     3. Fix existing type mismatches in tests and skill/runtime code as they are surfaced.
+
+- Refine account access policy beyond the current broad `read_only` flag
+  - Why: the current `account_access_profiles` examples (`bot`, `personal`) are too coarse for future SMTP and IMAP capabilities
+  - Status: `todo`
+  - Steps:
+    1. Split policy by capability so SMTP and IMAP permissions can be controlled independently.
+    2. Define the minimum policy surface needed for planned IMAP features instead of overloading `read_only`.
+    3. Update config docs and examples once the finer-grained policy model is decided.
