@@ -53,3 +53,5 @@ In that later state, they would become thinner OpenClaw wrappers over native MCP
 See [wrapper-skill-decision.md](wrapper-skill-decision.md) for the decision record, motivation, and consequences.
 
 See [send-email-skills.md](send-email-skills.md) for the concrete temporary skill design for `send_email_interactive` and `send_email_predefined`.
+
+See [../../openclaw_skills/README.md](../../openclaw_skills/README.md) for automatic and manual skill installation into the OpenClaw container.
