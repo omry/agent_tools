@@ -6,11 +6,32 @@ build-backend = "setuptools.build_meta"
 name = "mailgateway-mcp"
 version = "0.1.1.dev0"
 description = "Mail gateway MCP server implementation"
+readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+  { name = "Omry Yadan", email = "omry@yadan.net" },
+]
+maintainers = [
+  { name = "Omry Yadan", email = "omry@yadan.net" },
+]
+keywords = ["email", "mcp", "mail", "smtp", "openclaw"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Communications :: Email",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
   "hydra-core>=1.3,<2.0",
   "mcp>=1.9.4,<2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/omry/agent_tools"
+Repository = "https://github.com/omry/agent_tools"
 
 [project.optional-dependencies]
 dev = [
