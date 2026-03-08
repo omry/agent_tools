@@ -10,6 +10,7 @@ docs=(
   "$script_dir/architecture.md"
   "$script_dir/openclaw-integration/README.md"
   "$script_dir/openclaw-integration/wrapper-skill-decision.md"
+  "$script_dir/openclaw-integration/send-email-skills.md"
   "$script_dir/config.md"
   "$script_dir/policies.md"
   "$script_dir/errors.md"

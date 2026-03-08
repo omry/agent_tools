@@ -46,10 +46,11 @@ This decision still keeps the interim integration intentionally low-scope. The s
 
 This decision also leaves room for the planned MailGateway IMAP stage. The shim can remain MailGateway-specific while still being structured to add future IMAP tool calls instead of being tightly coupled to the initial SMTP send flow.
 
-This decision provides a clean migration path. Once OpenClaw supports native MCP, OpenClaw can call MailGateway MCP directly and both temporary layers can be removed:
+This decision provides a clean migration path. Once OpenClaw supports native MCP, OpenClaw can call MailGateway MCP directly and the temporary shim can be removed:
 
-- the wrapper skills
 - the skill-side MCP shim
+
+The two skill modes may still remain valuable after native MCP support exists, because interactive and unattended sending are still different OpenClaw behaviors even when the underlying transport no longer needs a compatibility shim.
 
 This decision creates a clearer safety boundary between attended and unattended sending. Interactive sending and predefined unattended sending have different confirmation expectations and should not rely on a single ambiguous skill surface.
 
@@ -74,10 +75,11 @@ Interactive and unattended sending will need separate operational and documentat
 
 When OpenClaw gains native MCP support, replace the compatibility path with direct OpenClaw-to-MailGateway MCP integration.
 
-At that point, retire both temporary layers:
+At that point:
 
-- retire the OpenClaw wrapper skills
 - retire the skill-side MCP shim
+- simplify the OpenClaw skill implementations so they call native MCP directly
+- keep the two skill modes only if OpenClaw still benefits from explicitly separate interactive and unattended send behavior
 
 The long-term target is:
 

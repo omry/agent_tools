@@ -8,6 +8,7 @@ The design is documented in the `docs/` structure used by the MCP server templat
 - [docs/architecture.md](docs/architecture.md)
 - [docs/openclaw-integration/README.md](docs/openclaw-integration/README.md)
 - [docs/openclaw-integration/wrapper-skill-decision.md](docs/openclaw-integration/wrapper-skill-decision.md)
+- [docs/openclaw-integration/send-email-skills.md](docs/openclaw-integration/send-email-skills.md)
 - [docs/config.md](docs/config.md)
 - [docs/policies.md](docs/policies.md)
 - [docs/errors.md](docs/errors.md)

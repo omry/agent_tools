@@ -35,13 +35,21 @@ Those send skills are only the first OpenClaw-facing use of the shim. The shim s
 
 ## Temporary status
 
-Both parts of the compatibility layer are temporary:
+The protocol shim is temporary:
 
-- the OpenClaw wrapper skills are temporary
 - the skill-local MCP-over-HTTP shim is temporary
 
-Once OpenClaw supports native MCP, OpenClaw should call MailGateway MCP directly and both temporary layers should be retired.
+Once OpenClaw supports native MCP, OpenClaw should call MailGateway MCP directly and the temporary shim should be retired.
+
+The two skill modes may still remain useful after native MCP support exists:
+
+- `send_email_interactive`
+- `send_email_predefined`
+
+In that later state, they would become thinner OpenClaw wrappers over native MCP rather than wrappers over the temporary shim.
 
 ## Related decision
 
 See [wrapper-skill-decision.md](wrapper-skill-decision.md) for the decision record, motivation, and consequences.
+
+See [send-email-skills.md](send-email-skills.md) for the concrete temporary skill design for `send_email_interactive` and `send_email_predefined`.
