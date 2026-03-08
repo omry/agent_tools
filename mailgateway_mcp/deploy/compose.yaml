@@ -1,0 +1,15 @@
+services:
+  mailgateway-mcp:
+    image: python:3.11-slim
+    container_name: mailgateway-mcp
+    restart: unless-stopped
+    env_file:
+      - ./mailgateway.env
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+    ports:
+      - "127.0.0.1:8025:8025"
+    command: >
+      sh -lc
+      'python -m pip install --no-cache-dir "mailgateway-mcp==$${MAILGATEWAY_PACKAGE_VERSION}" &&
+      exec mailgateway-mcp --config-path /config --config-name config'

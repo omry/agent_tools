@@ -1,0 +1,27 @@
+defaults:
+  - mailgateway_app_config_schema
+  - _self_
+
+server:
+  name: mailgateway-mcp
+  transport: streamable-http
+  host: ${oc.env:MAILGATEWAY_SERVER_HOST,127.0.0.1}
+  port: ${oc.env:MAILGATEWAY_SERVER_PORT,8025}
+  path: ${oc.env:MAILGATEWAY_SERVER_PATH,/mcp}
+  stateless_http: true
+  json_response: true
+
+mail:
+  accounts:
+    primary:
+      smtp:
+        host: ${oc.env:MAILGATEWAY_SMTP_HOST}
+        port: ${oc.env:MAILGATEWAY_SMTP_PORT,587}
+        authenticate: ${oc.env:MAILGATEWAY_SMTP_AUTHENTICATE,true}
+        username: ${oc.env:MAILGATEWAY_SMTP_USERNAME}
+        password: ${oc.env:MAILGATEWAY_SMTP_PASSWORD}
+        from_email: ${oc.env:MAILGATEWAY_SMTP_FROM_EMAIL}
+        from_name: ${oc.env:MAILGATEWAY_SMTP_FROM_NAME,MailGateway}
+        tls: ${oc.env:MAILGATEWAY_SMTP_TLS,starttls}
+        verify_peer: ${oc.env:MAILGATEWAY_SMTP_VERIFY_PEER,true}
+        timeout_seconds: ${oc.env:MAILGATEWAY_SMTP_TIMEOUT_SECONDS,30.0}
