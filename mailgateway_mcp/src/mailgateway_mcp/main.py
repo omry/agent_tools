@@ -57,7 +57,11 @@ HtmlBody = Annotated[
 
 def build_app(cfg: AppConfigLike) -> MailGatewayApp:
     smtp_config = resolve_default_smtp_config(cfg)
-    return MailGatewayApp(smtp_config, smtp_client=SmtpSubmissionClient(smtp_config))
+    return MailGatewayApp(
+        cfg.mail,
+        smtp_config,
+        smtp_client=SmtpSubmissionClient(smtp_config),
+    )
 
 
 def build_server(cfg: AppConfigLike) -> "FastMCP":
@@ -72,6 +76,18 @@ def build_server(cfg: AppConfigLike) -> "FastMCP":
     server.settings.host = cfg.server.host
     server.settings.port = cfg.server.port
     server.settings.streamable_http_path = cfg.server.path
+
+    @server.tool(
+        description=(
+            "Return the configured accounts available to the caller, along with "
+            "lightweight metadata needed to choose an account for later SMTP or "
+            "future IMAP operations."
+        )
+    )
+    def list_accounts() -> dict[str, object]:
+        return {
+            "accounts": app.list_accounts(),
+        }
 
     @server.tool(
         description=(

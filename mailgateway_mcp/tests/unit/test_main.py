@@ -14,14 +14,44 @@ def test_build_app_accepts_hydra_config() -> None:
 
     app = build_app(cfg)
 
-    assert app.tool_names() == ["send_email"]
+    assert app.tool_names() == ["list_accounts", "send_email"]
+
+
+def test_build_app_list_accounts_uses_real_config_shape() -> None:
+    cfg = OmegaConf.structured(AppConfig())
+
+    app = build_app(cfg)
+
+    assert app.list_accounts() == [
+        {
+            "name": "primary",
+            "description": "Bot-owned account for automated email tasks.",
+            "account_access_profile": "bot",
+            "smtp_enabled": True,
+            "imap_enabled": False,
+        }
+    ]
 
 
 def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     tools: dict[str, object] = {}
+    list_accounts_calls = 0
     send_email_calls: list[dict[str, object]] = []
 
     class FakeApp:
+        def list_accounts(self):
+            nonlocal list_accounts_calls
+            list_accounts_calls += 1
+            return [
+                {
+                    "name": "primary",
+                    "description": "Primary account",
+                    "account_access_profile": "bot",
+                    "smtp_enabled": True,
+                    "imap_enabled": False,
+                }
+            ]
+
         def send_email(
             self,
             *,
@@ -95,7 +125,23 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     assert server.settings.host == "127.0.0.1"
     assert server.settings.port == 8000
     assert server.settings.streamable_http_path == "/mcp"
+    assert "list_accounts" in tools
     assert "send_email" in tools
+
+    list_result = tools["list_accounts"]()
+
+    assert list_result == {
+        "accounts": [
+            {
+                "name": "primary",
+                "description": "Primary account",
+                "account_access_profile": "bot",
+                "smtp_enabled": True,
+                "imap_enabled": False,
+            }
+        ]
+    }
+    assert list_accounts_calls == 1
 
     send_result = tools["send_email"](
         to=["to@example.com"],
@@ -124,6 +170,10 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_build_server_describes_send_email_tool_schema() -> None:
     server = build_server(OmegaConf.structured(AppConfig()))
+
+    list_accounts_tool = server._tool_manager._tools["list_accounts"]
+    assert "configured accounts available to the caller" in list_accounts_tool.description
+    assert list_accounts_tool.parameters["properties"] == {}
 
     send_email_tool = server._tool_manager._tools["send_email"]
     parameters = send_email_tool.parameters["properties"]

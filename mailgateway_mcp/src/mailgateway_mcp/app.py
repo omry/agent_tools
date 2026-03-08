@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Protocol
 
-from .config import SmtpConfigLike
+from .config import MailConfigLike, SmtpConfigLike
 
 
 @dataclass(frozen=True)
@@ -23,12 +23,38 @@ class SmtpClientLike(Protocol):
 class MailGatewayApp:
     """Minimal application surface before wiring a concrete MCP SDK."""
 
-    def __init__(self, smtp_config: SmtpConfigLike, smtp_client: SmtpClientLike) -> None:
+    def __init__(
+        self,
+        mail_config: MailConfigLike,
+        smtp_config: SmtpConfigLike,
+        smtp_client: SmtpClientLike,
+    ) -> None:
+        self._mail_config = mail_config
         self._smtp_config = smtp_config
         self._smtp_client = smtp_client
 
     def tool_names(self) -> list[str]:
-        return ["send_email"]
+        return ["list_accounts", "send_email"]
+
+    def list_accounts(self) -> list[dict[str, object]]:
+        summaries: list[dict[str, object]] = []
+        for account_name in sorted(self._mail_config.accounts):
+            account = self._mail_config.accounts[account_name]
+            imap_enabled = account.imap is not None
+            profile = self._mail_config.account_access_profiles[
+                account.account_access_profile
+            ]
+            summary: dict[str, object] = {
+                "name": account_name,
+                "description": account.description,
+                "account_access_profile": account.account_access_profile,
+                "smtp_enabled": account.smtp is not None,
+                "imap_enabled": imap_enabled,
+            }
+            if imap_enabled:
+                summary["imap_read_only"] = profile.read_only
+            summaries.append(summary)
+        return summaries
 
     def send_email(
         self,

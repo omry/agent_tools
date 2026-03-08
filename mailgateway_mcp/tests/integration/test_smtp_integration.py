@@ -13,7 +13,7 @@ import pytest
 import trustme
 
 from mailgateway_mcp.app import MailGatewayApp
-from mailgateway_mcp.config import SmtpConfig
+from mailgateway_mcp.config import AccountConfig, MailConfig, SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
 
@@ -96,7 +96,19 @@ def _smtp_config(
 
 
 def _build_app(smtp_config: SmtpConfig) -> MailGatewayApp:
-    return MailGatewayApp(smtp_config, smtp_client=SmtpSubmissionClient(smtp_config))
+    return MailGatewayApp(
+        MailConfig(
+            accounts={
+                "primary": AccountConfig(
+                    description="Primary test account",
+                    account_access_profile="bot",
+                    smtp=smtp_config,
+                )
+            }
+        ),
+        smtp_config,
+        smtp_client=SmtpSubmissionClient(smtp_config),
+    )
 
 
 def _send_test_message(app: MailGatewayApp) -> None:
