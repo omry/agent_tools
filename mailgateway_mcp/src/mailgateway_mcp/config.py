@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
 from hydra.core.config_store import ConfigStore
+
+
+_SMTP_TLS_MODES = {"none", "starttls", "implicit"}
+_IMAP_TLS_MODES = {"none", "starttls", "implicit"}
 
 
 @dataclass
@@ -18,26 +23,129 @@ class ServerConfig:
 
 
 @dataclass
+class SmtpLimitsConfig:
+    max_messages_per_minute: int | None = None
+    max_recipients_per_message: int | None = None
+
+
+@dataclass
+class SmtpIdempotencyConfig:
+    expiration_days: int = 7
+
+
+@dataclass
+class RecipientPolicyConfig:
+    allowed_domains: list[str] = field(default_factory=list)
+    blocked_domains: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SmtpConfig:
     host: str = "localhost"
     port: int = 587
+    authenticate: bool = False
     username: str = ""
     password: str = ""
     from_email: str = "agent@example.com"
     from_name: str = "MailGateway"
-    starttls: bool = True
-    use_ssl: bool = False
+    tls: str = "starttls"
     verify_peer: bool = True
     timeout_seconds: float = 30.0
+    limits: SmtpLimitsConfig = field(default_factory=SmtpLimitsConfig)
+    idempotency: SmtpIdempotencyConfig = field(default_factory=SmtpIdempotencyConfig)
+    recipient_policy: RecipientPolicyConfig = field(
+        default_factory=RecipientPolicyConfig
+    )
 
     def __post_init__(self) -> None:
         validate_smtp_config(self)
 
 
 @dataclass
+class ImapFolderConfig:
+    description: str = ""
+
+
+@dataclass
+class ImapConfig:
+    host: str = "localhost"
+    port: int = 993
+    username: str = ""
+    password: str = ""
+    tls: str = "implicit"
+    verify_peer: bool = True
+    default_folder: str | None = None
+    folders: dict[str, ImapFolderConfig] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        validate_imap_config(self)
+
+
+@dataclass
+class SmtpAuditConfig:
+    enabled: bool = True
+    retention_days: int = 365
+    store_message_metadata: bool = True
+    store_message_body: bool = False
+
+
+@dataclass
+class ImapAuditConfig:
+    enabled: bool = True
+    retention_days: int = 365
+    store_message_metadata: bool = True
+    store_message_body: bool = False
+    audit_read_access: bool = False
+    audit_search_queries: bool = False
+    audit_message_state_changes: bool = True
+    audit_message_moves: bool = True
+    audit_message_deletes: bool = True
+
+
+@dataclass
+class AccountAccessProfileConfig:
+    read_only: bool = False
+    smtp_audit: SmtpAuditConfig = field(default_factory=SmtpAuditConfig)
+    imap_audit: ImapAuditConfig = field(default_factory=ImapAuditConfig)
+
+
+@dataclass
+class AccountConfig:
+    description: str = ""
+    account_access_profile: str = "bot"
+    smtp: SmtpConfig | None = None
+    imap: ImapConfig | None = None
+
+
+def _default_accounts() -> dict[str, AccountConfig]:
+    return {
+        "primary": AccountConfig(
+            description="Bot-owned account for automated email tasks.",
+            account_access_profile="bot",
+            smtp=SmtpConfig(),
+        )
+    }
+
+
+def _default_access_profiles() -> dict[str, AccountAccessProfileConfig]:
+    return {"bot": AccountAccessProfileConfig()}
+
+
+@dataclass
+class MailConfig:
+    accounts: dict[str, AccountConfig] = field(default_factory=_default_accounts)
+    account_access_profiles: dict[str, AccountAccessProfileConfig] = field(
+        default_factory=_default_access_profiles
+    )
+
+
+@dataclass
 class AppConfig:
     server: ServerConfig = field(default_factory=ServerConfig)
-    smtp: SmtpConfig = field(default_factory=SmtpConfig)
+    mail: MailConfig = field(default_factory=MailConfig)
+
+    def __post_init__(self) -> None:
+        validate_app_config(self)
 
 
 class ServerConfigLike(Protocol):
@@ -53,29 +161,118 @@ class ServerConfigLike(Protocol):
 class SmtpConfigLike(Protocol):
     host: str
     port: int
+    authenticate: bool
     username: str
     password: str
     from_email: str
     from_name: str
-    starttls: bool
-    use_ssl: bool
+    tls: str
     verify_peer: bool
     timeout_seconds: float
 
 
+class ImapConfigLike(Protocol):
+    host: str
+    port: int
+    username: str
+    password: str
+    tls: str
+    verify_peer: bool
+    default_folder: str | None
+    folders: Mapping[str, object]
+
+
+class AccountConfigLike(Protocol):
+    description: str
+    account_access_profile: str
+    smtp: SmtpConfigLike | None
+    imap: ImapConfigLike | None
+
+
+class AccountAccessProfileConfigLike(Protocol):
+    read_only: bool
+
+
+class MailConfigLike(Protocol):
+    accounts: Mapping[str, AccountConfigLike]
+    account_access_profiles: Mapping[str, AccountAccessProfileConfigLike]
+
+
 class AppConfigLike(Protocol):
     server: ServerConfigLike
-    smtp: SmtpConfigLike
+    mail: MailConfigLike
 
 
 def validate_smtp_config(config: SmtpConfigLike) -> None:
-    if config.use_ssl and config.starttls:
-        raise ValueError("smtp config cannot enable both use_ssl and starttls")
+    if config.tls not in _SMTP_TLS_MODES:
+        raise ValueError(
+            "smtp config tls must be one of: none, starttls, implicit"
+        )
 
     has_username = bool(config.username)
     has_password = bool(config.password)
-    if has_username != has_password:
-        raise ValueError("smtp config requires username and password together")
+
+    if config.authenticate:
+        if not (has_username and has_password):
+            raise ValueError(
+                "smtp config requires username and password together when authenticate is true"
+            )
+    elif has_username or has_password:
+        raise ValueError(
+            "smtp config requires username and password to be unset when authenticate is false"
+        )
+
+
+def validate_imap_config(config: ImapConfigLike) -> None:
+    if config.tls not in _IMAP_TLS_MODES:
+        raise ValueError(
+            "imap config tls must be one of: none, starttls, implicit"
+        )
+
+    if config.default_folder and config.default_folder not in config.folders:
+        raise ValueError("imap config default_folder must match a configured folder")
+
+
+def validate_app_config(config: AppConfigLike) -> None:
+    if not config.mail.accounts:
+        raise ValueError("mail config requires at least one account")
+
+    if not config.mail.account_access_profiles:
+        raise ValueError("mail config requires at least one account access profile")
+
+    for account_name, account in config.mail.accounts.items():
+        if account.account_access_profile not in config.mail.account_access_profiles:
+            raise ValueError(
+                f"mail account {account_name} references an unknown account_access_profile"
+            )
+
+        if account.smtp is None and account.imap is None:
+            raise ValueError(
+                f"mail account {account_name} must enable smtp, imap, or both"
+            )
+
+        if account.smtp is not None:
+            validate_smtp_config(account.smtp)
+
+        if account.imap is not None:
+            validate_imap_config(account.imap)
+
+
+def resolve_default_smtp_config(config: AppConfigLike) -> SmtpConfigLike:
+    validate_app_config(config)
+
+    if "primary" in config.mail.accounts:
+        primary_account = config.mail.accounts["primary"]
+        if primary_account.smtp is not None:
+            return primary_account.smtp
+
+    for account in config.mail.accounts.values():
+        if account.smtp is not None:
+            return account.smtp
+
+    raise ValueError(
+        "current send_email implementation requires at least one SMTP-enabled account"
+    )
 
 
 _CONFIG_SCHEMA_NAME = "mailgateway_app_config_schema"

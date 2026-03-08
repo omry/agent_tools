@@ -6,7 +6,7 @@ import hydra
 from pydantic import Field
 
 from .app import MailGatewayApp
-from .config import AppConfigLike, register_configs
+from .config import AppConfigLike, register_configs, resolve_default_smtp_config
 from .smtp import SmtpSubmissionClient
 
 if TYPE_CHECKING:
@@ -56,7 +56,8 @@ HtmlBody = Annotated[
 
 
 def build_app(cfg: AppConfigLike) -> MailGatewayApp:
-    return MailGatewayApp(cfg, smtp_client=SmtpSubmissionClient(cfg.smtp))
+    smtp_config = resolve_default_smtp_config(cfg)
+    return MailGatewayApp(smtp_config, smtp_client=SmtpSubmissionClient(smtp_config))
 
 
 def build_server(cfg: AppConfigLike) -> "FastMCP":

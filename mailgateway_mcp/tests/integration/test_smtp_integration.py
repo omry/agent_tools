@@ -13,7 +13,7 @@ import pytest
 import trustme
 
 from mailgateway_mcp.app import MailGatewayApp
-from mailgateway_mcp.config import AppConfig, SmtpConfig
+from mailgateway_mcp.config import SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
 
@@ -75,11 +75,28 @@ def _build_server_ssl_context(cert_path: str, key_path: str) -> ssl.SSLContext:
     return context
 
 
+def _smtp_config(
+    *,
+    starttls: bool | None = None,
+    use_ssl: bool | None = None,
+    authenticate: bool | None = None,
+    **overrides,
+) -> SmtpConfig:
+    if use_ssl:
+        tls = "implicit"
+    elif starttls is False:
+        tls = "none"
+    else:
+        tls = "starttls"
+
+    if authenticate is None:
+        authenticate = bool(overrides.get("username"))
+
+    return SmtpConfig(tls=tls, authenticate=authenticate, **overrides)
+
+
 def _build_app(smtp_config: SmtpConfig) -> MailGatewayApp:
-    return MailGatewayApp(
-        AppConfig(smtp=smtp_config),
-        smtp_client=SmtpSubmissionClient(smtp_config),
-    )
+    return MailGatewayApp(smtp_config, smtp_client=SmtpSubmissionClient(smtp_config))
 
 
 def _send_test_message(app: MailGatewayApp) -> None:
@@ -166,7 +183,7 @@ def smtp_server_factory(
 
 def test_send_email_submits_to_plain_smtp_server(smtp_server_factory) -> None:
     handler, controller = smtp_server_factory()
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -192,7 +209,7 @@ def test_send_email_submits_to_plain_smtp_server(smtp_server_factory) -> None:
 
 def test_send_email_submits_html_only_message(smtp_server_factory) -> None:
     handler, controller = smtp_server_factory()
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -230,7 +247,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory()
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -258,7 +275,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name(
 
 
 def test_send_email_fails_when_server_is_unavailable(free_tcp_port: int) -> None:
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host="127.0.0.1",
         port=free_tcp_port,
         from_email="agent@example.com",
@@ -274,7 +291,7 @@ def test_send_email_fails_when_server_is_unavailable(free_tcp_port: int) -> None
 
 def test_send_email_surfaces_rcpt_rejections(smtp_server_factory) -> None:
     handler, controller = smtp_server_factory(handler=RejectingRcptHandler())
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -306,7 +323,7 @@ def test_send_email_fails_closed_when_only_some_recipients_are_refused(
     handler, controller = smtp_server_factory(
         handler=PartiallyRejectingRcptHandler("bcc@example.com")
     )
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -332,7 +349,7 @@ def test_send_email_fails_closed_when_only_some_recipients_are_refused(
 
 def test_send_email_surfaces_data_rejections(smtp_server_factory) -> None:
     handler, controller = smtp_server_factory(handler=RejectingDataHandler())
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -354,7 +371,7 @@ def test_send_email_surfaces_unknown_submission_status_on_disconnect(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory(handler=DisconnectingDataHandler())
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -375,7 +392,7 @@ def test_send_email_submits_over_starttls_when_peer_verification_is_disabled(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory(starttls=True)
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -395,7 +412,7 @@ def test_send_email_fails_on_starttls_with_invalid_certificate(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory(starttls=True)
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -416,7 +433,7 @@ def test_send_email_submits_over_smtps_when_peer_verification_is_disabled(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory(use_ssl=True)
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -436,7 +453,7 @@ def test_send_email_fails_on_smtps_with_invalid_certificate(
     smtp_server_factory,
 ) -> None:
     handler, controller = smtp_server_factory(use_ssl=True)
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
         from_email="agent@example.com",
@@ -464,9 +481,10 @@ def test_send_email_authenticates_successfully_after_starttls(
             login == b"user" and password == b"secret"
         ),
     )
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
+        authenticate=True,
         username="user",
         password="secret",
         from_email="agent@example.com",
@@ -491,9 +509,10 @@ def test_send_email_surfaces_authentication_failures(
         auth_required=True,
         auth_callback=lambda mechanism, login, password: False,
     )
-    smtp_config = SmtpConfig(
+    smtp_config = _smtp_config(
         host=controller.hostname,
         port=controller.port,
+        authenticate=True,
         username="user",
         password="wrong",
         from_email="agent@example.com",

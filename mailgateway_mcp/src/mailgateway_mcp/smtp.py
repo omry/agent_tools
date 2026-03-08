@@ -14,7 +14,7 @@ class SmtpSubmissionClient:
 
     def send(self, message: EmailMessage, sender: str, recipients: list[str]) -> None:
         ssl_context = self._build_ssl_context()
-        if self._config.use_ssl:
+        if self._config.tls == "implicit":
             smtp_client = smtplib.SMTP_SSL(
                 self._config.host,
                 self._config.port,
@@ -30,11 +30,11 @@ class SmtpSubmissionClient:
 
         with smtp_client as server:
             server.ehlo()
-            if self._config.starttls:
+            if self._config.tls == "starttls":
                 server.starttls(context=ssl_context)
                 server.ehlo()
 
-            if self._config.username:
+            if self._config.authenticate:
                 server.login(self._config.username, self._config.password)
 
             refused_recipients = server.send_message(

@@ -47,10 +47,28 @@ class FakeServer:
         return self.refused_recipients
 
 
+def _smtp_config(
+    *,
+    starttls: bool | None = None,
+    use_ssl: bool | None = None,
+    authenticate: bool | None = None,
+    **overrides,
+) -> SmtpConfig:
+    if use_ssl:
+        tls = "implicit"
+    elif starttls is False:
+        tls = "none"
+    else:
+        tls = "starttls"
+
+    if authenticate is None:
+        authenticate = bool(overrides.get("username"))
+
+    return SmtpConfig(tls=tls, authenticate=authenticate, **overrides)
+
+
 def test_build_ssl_context_disables_verification_when_verify_peer_is_false() -> None:
-    client = SmtpSubmissionClient(
-        SmtpConfig(verify_peer=False)
-    )
+    client = SmtpSubmissionClient(_smtp_config(verify_peer=False))
 
     context = client._build_ssl_context()
 
@@ -59,7 +77,7 @@ def test_build_ssl_context_disables_verification_when_verify_peer_is_false() -> 
 
 
 def test_build_ssl_context_verifies_peer_by_default() -> None:
-    client = SmtpSubmissionClient(SmtpConfig())
+    client = SmtpSubmissionClient(_smtp_config())
 
     context = client._build_ssl_context()
 
@@ -79,9 +97,10 @@ def test_send_uses_unverified_context_for_starttls(monkeypatch) -> None:
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
 
     client = SmtpSubmissionClient(
-        SmtpConfig(
+        _smtp_config(
             host="smtp.example.com",
             verify_peer=False,
+            authenticate=True,
             username="user",
             password="secret",
         )
@@ -123,7 +142,7 @@ def test_send_uses_smtp_ssl_when_use_ssl_is_enabled(monkeypatch) -> None:
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP_SSL", fake_smtp_ssl)
 
     client = SmtpSubmissionClient(
-        SmtpConfig(
+        _smtp_config(
             host="smtp.example.com",
             port=465,
             use_ssl=True,
@@ -152,7 +171,7 @@ def test_send_skips_login_when_username_is_not_configured(monkeypatch) -> None:
 
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
 
-    client = SmtpSubmissionClient(SmtpConfig(username="", password=""))
+    client = SmtpSubmissionClient(_smtp_config())
     message = EmailMessage()
     message["Subject"] = "Hello"
 
@@ -167,7 +186,7 @@ def test_send_propagates_connection_errors(monkeypatch) -> None:
 
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
 
-    client = SmtpSubmissionClient(SmtpConfig())
+    client = SmtpSubmissionClient(_smtp_config())
     message = EmailMessage()
     message["Subject"] = "Hello"
 
@@ -189,7 +208,7 @@ def test_send_propagates_authentication_errors(monkeypatch) -> None:
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
 
     client = SmtpSubmissionClient(
-        SmtpConfig(username="user", password="secret")
+        _smtp_config(authenticate=True, username="user", password="secret")
     )
     message = EmailMessage()
     message["Subject"] = "Hello"
@@ -209,7 +228,7 @@ def test_send_raises_when_some_recipients_are_refused(monkeypatch) -> None:
 
     monkeypatch.setattr("mailgateway_mcp.smtp.smtplib.SMTP", fake_smtp)
 
-    client = SmtpSubmissionClient(SmtpConfig())
+    client = SmtpSubmissionClient(_smtp_config())
     message = EmailMessage()
     message["Subject"] = "Hello"
 
@@ -226,17 +245,15 @@ def test_send_raises_when_some_recipients_are_refused(monkeypatch) -> None:
 
 
 def test_client_rejects_invalid_duck_typed_config() -> None:
-    with pytest.raises(ValueError, match="both use_ssl and starttls"):
+    with pytest.raises(ValueError, match="smtp config tls"):
         SmtpSubmissionClient(
             SimpleNamespace(
                 host="smtp.example.com",
                 port=587,
+                authenticate=False,
                 username="",
                 password="",
-                from_email="agent@example.com",
-                from_name="Agent MailGateway",
-                starttls=True,
-                use_ssl=True,
+                tls="broken",
                 verify_peer=True,
                 timeout_seconds=30.0,
             )

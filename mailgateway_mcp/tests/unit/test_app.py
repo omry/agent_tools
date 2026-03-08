@@ -1,7 +1,7 @@
 import pytest
 
 from mailgateway_mcp.app import MailGatewayApp
-from mailgateway_mcp.config import AppConfig, SmtpConfig
+from mailgateway_mcp.config import SmtpConfig
 
 
 class FakeSmtpClient:
@@ -17,7 +17,7 @@ class FakeSmtpClient:
 
 
 def test_tool_names_contains_send_email() -> None:
-    app = MailGatewayApp(AppConfig(), smtp_client=FakeSmtpClient())
+    app = MailGatewayApp(SmtpConfig(), smtp_client=FakeSmtpClient())
 
     assert app.tool_names() == ["send_email"]
 
@@ -25,11 +25,9 @@ def test_tool_names_contains_send_email() -> None:
 def test_send_email_submits_message_and_excludes_bcc_header() -> None:
     smtp_client = FakeSmtpClient()
     app = MailGatewayApp(
-        AppConfig(
-            smtp=SmtpConfig(
-                from_email="agent@example.com",
-                from_name="Agent MailGateway",
-            )
+        SmtpConfig(
+            from_email="agent@example.com",
+            from_name="Agent MailGateway",
         ),
         smtp_client=smtp_client,
     )
@@ -59,7 +57,7 @@ def test_send_email_submits_message_and_excludes_bcc_header() -> None:
 
 
 def test_send_email_requires_body_content() -> None:
-    app = MailGatewayApp(AppConfig(), smtp_client=FakeSmtpClient())
+    app = MailGatewayApp(SmtpConfig(), smtp_client=FakeSmtpClient())
 
     with pytest.raises(ValueError, match="text_body or html_body"):
         app.send_email(
@@ -71,11 +69,9 @@ def test_send_email_requires_body_content() -> None:
 def test_send_email_supports_html_only_body() -> None:
     smtp_client = FakeSmtpClient()
     app = MailGatewayApp(
-        AppConfig(
-            smtp=SmtpConfig(
-                from_email="agent@example.com",
-                from_name="Agent MailGateway",
-            )
+        SmtpConfig(
+            from_email="agent@example.com",
+            from_name="Agent MailGateway",
         ),
         smtp_client=smtp_client,
     )
@@ -94,11 +90,9 @@ def test_send_email_supports_html_only_body() -> None:
 def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
     smtp_client = FakeSmtpClient()
     app = MailGatewayApp(
-        AppConfig(
-            smtp=SmtpConfig(
-                from_email="agent@example.com",
-                from_name="Jöhn Döe",
-            )
+        SmtpConfig(
+            from_email="agent@example.com",
+            from_name="Jöhn Döe",
         ),
         smtp_client=smtp_client,
     )

@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Protocol
 
-from .config import AppConfigLike
+from .config import SmtpConfigLike
 
 
 @dataclass(frozen=True)
@@ -23,8 +23,8 @@ class SmtpClientLike(Protocol):
 class MailGatewayApp:
     """Minimal application surface before wiring a concrete MCP SDK."""
 
-    def __init__(self, config: AppConfigLike, smtp_client: SmtpClientLike) -> None:
-        self._config = config
+    def __init__(self, smtp_config: SmtpConfigLike, smtp_client: SmtpClientLike) -> None:
+        self._smtp_config = smtp_config
         self._smtp_client = smtp_client
 
     def tool_names(self) -> list[str]:
@@ -50,9 +50,7 @@ class MailGatewayApp:
         if not normalized_subject:
             raise ValueError("send_email requires a non-empty subject")
 
-        sender = formataddr(
-            (self._config.smtp.from_name, self._config.smtp.from_email)
-        )
+        sender = formataddr((self._smtp_config.from_name, self._smtp_config.from_email))
         message = EmailMessage()
         message["From"] = sender
         message["To"] = ", ".join(recipients_to)
@@ -71,7 +69,7 @@ class MailGatewayApp:
         envelope_recipients = recipients_to + recipients_cc + recipients_bcc
         self._smtp_client.send(
             message,
-            sender=self._config.smtp.from_email,
+            sender=self._smtp_config.from_email,
             recipients=envelope_recipients,
         )
 
@@ -93,5 +91,5 @@ class MailGatewayApp:
         return normalized
 
     def _sender_domain(self) -> str:
-        _, _, domain = self._config.smtp.from_email.partition("@")
+        _, _, domain = self._smtp_config.from_email.partition("@")
         return domain or "localhost"
