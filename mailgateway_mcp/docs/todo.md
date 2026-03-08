@@ -52,3 +52,11 @@ Track agreed follow-up work that is not specific to tests.
     1. Split policy by capability so SMTP and IMAP permissions can be controlled independently.
     2. Define the minimum policy surface needed for planned IMAP features instead of overloading `read_only`.
     3. Update config docs and examples once the finer-grained policy model is decided.
+
+- Add optional bot-signing behavior for personal-account sends
+  - Why: when sending through a personal account, the operator may want the body to disclose that the bot drafted or sent the message
+  - Status: `todo`
+  - Steps:
+    1. Add account-level or skill-level config to control whether bot-signing is enabled for personal-account sends.
+    2. Define how the signature text is injected for text and HTML bodies.
+    3. Update interactive skill behavior and docs once the policy is decided.
