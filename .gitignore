@@ -7,3 +7,4 @@ build/
 dist/
 outputs/
 mailgateway_mcp/src/mailgateway_mcp/conf/real_config.yaml
+mailgateway_mcp/docs/mailgateway_mcp_design_docs.md
