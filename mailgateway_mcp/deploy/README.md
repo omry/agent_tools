@@ -57,6 +57,33 @@ The Compose service:
 - installs the requested package version from PyPI
 - starts the MailGateway MCP server with the mounted `config.yaml`
 - binds the container to `0.0.0.0` internally and publishes it only on host loopback via `127.0.0.1:8025:8025`
+- uses a deterministic Docker bridge by default so host firewall rules can target a stable interface and subnet
+
+Default Docker network values:
+
+- Docker network name: `mailgateway`
+- bridge interface: `mailgateway0`
+- bridge subnet: `172.31.250.0/24`
+
+If a host already uses that interface name or subnet, override them only for the `docker compose` command:
+
+```bash
+cd /opt/mailgateway
+MAILGATEWAY_DOCKER_BRIDGE_NAME=mailgateway1 \
+MAILGATEWAY_DOCKER_SUBNET=172.31.251.0/24 \
+docker compose up -d
+```
+
+For hosts using UFW, allow the deterministic MailGateway bridge before broader private-range denies:
+
+```bash
+sudo ufw allow in on mailgateway0
+sudo ufw allow out on mailgateway0
+sudo ufw allow in from 172.31.250.0/24
+sudo ufw insert 1 allow out to 172.31.250.0/24
+sudo ufw route allow in on lo out on mailgateway0
+sudo ufw route allow in on mailgateway0 out on lo
+```
 
 ## Inspect and test
 

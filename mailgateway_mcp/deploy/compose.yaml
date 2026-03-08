@@ -9,7 +9,20 @@ services:
       - ./config.yaml:/config/config.yaml:ro
     ports:
       - "127.0.0.1:8025:8025"
+    networks:
+      - mailgateway
     command: >
       sh -lc
       'python -m pip install --no-cache-dir "mailgateway-mcp==$${MAILGATEWAY_PACKAGE_VERSION}" &&
       exec mailgateway-mcp --config-path /config --config-name config'
+
+networks:
+  mailgateway:
+    name: mailgateway
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: "${MAILGATEWAY_DOCKER_BRIDGE_NAME:-mailgateway0}"
+    ipam:
+      config:
+        # Override only if the default subnet conflicts with another host network.
+        - subnet: "${MAILGATEWAY_DOCKER_SUBNET:-172.31.250.0/24}"
