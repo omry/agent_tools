@@ -258,23 +258,6 @@ def validate_app_config(config: AppConfigLike) -> None:
             validate_imap_config(account.imap)
 
 
-def resolve_default_smtp_config(config: AppConfigLike) -> SmtpConfigLike:
-    validate_app_config(config)
-
-    if "primary" in config.mail.accounts:
-        primary_account = config.mail.accounts["primary"]
-        if primary_account.smtp is not None:
-            return primary_account.smtp
-
-    for account in config.mail.accounts.values():
-        if account.smtp is not None:
-            return account.smtp
-
-    raise ValueError(
-        "current send_email implementation requires at least one SMTP-enabled account"
-    )
-
-
 _CONFIG_SCHEMA_NAME = "mailgateway_app_config_schema"
 _CONFIG_REGISTERED = False
 

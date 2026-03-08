@@ -55,6 +55,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
         def send_email(
             self,
             *,
+            account: str,
             to: list[str],
             subject: str,
             text_body: str | None = None,
@@ -64,6 +65,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
         ):
             send_email_calls.append(
                 {
+                    "account": account,
                     "to": to,
                     "subject": subject,
                     "text_body": text_body,
@@ -144,6 +146,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     assert list_accounts_calls == 1
 
     send_result = tools["send_email"](
+        account="primary",
         to=["to@example.com"],
         cc=["cc@example.com"],
         bcc=["bcc@example.com"],
@@ -158,6 +161,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     assert send_email_calls == [
         {
+            "account": "primary",
             "to": ["to@example.com"],
             "subject": "Hello",
             "text_body": "Plain body",
@@ -178,7 +182,13 @@ def test_build_server_describes_send_email_tool_schema() -> None:
     send_email_tool = server._tool_manager._tools["send_email"]
     parameters = send_email_tool.parameters["properties"]
 
-    assert "configured SMTP submission server" in send_email_tool.description
+    assert "selected account" in send_email_tool.description
+    assert parameters["account"]["type"] == "string"
+    assert parameters["account"]["description"] == (
+        "Configured account name returned by list_accounts. The selected account "
+        "must have SMTP enabled."
+    )
+    assert parameters["account"]["examples"] == ["primary"]
     assert parameters["to"]["type"] == "array"
     assert parameters["to"]["description"] == "JSON array of recipient email addresses."
     assert parameters["to"]["examples"] == [["to@example.com"]]

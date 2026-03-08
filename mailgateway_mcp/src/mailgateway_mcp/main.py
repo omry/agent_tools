@@ -6,7 +6,7 @@ import hydra
 from pydantic import Field
 
 from .app import MailGatewayApp
-from .config import AppConfigLike, register_configs, resolve_default_smtp_config
+from .config import AppConfigLike, register_configs
 from .smtp import SmtpSubmissionClient
 
 if TYPE_CHECKING:
@@ -26,6 +26,18 @@ OptionalRecipientList = Annotated[
     Field(
         description="Optional JSON array of recipient email addresses.",
         examples=[["person@example.com"]],
+    ),
+]
+
+AccountName = Annotated[
+    str,
+    Field(
+        description=(
+            "Configured account name returned by list_accounts. The selected account "
+            "must have SMTP enabled."
+        ),
+        examples=["primary"],
+        min_length=1,
     ),
 ]
 
@@ -56,11 +68,9 @@ HtmlBody = Annotated[
 
 
 def build_app(cfg: AppConfigLike) -> MailGatewayApp:
-    smtp_config = resolve_default_smtp_config(cfg)
     return MailGatewayApp(
         cfg.mail,
-        smtp_config,
-        smtp_client=SmtpSubmissionClient(smtp_config),
+        smtp_client_factory=SmtpSubmissionClient,
     )
 
 
@@ -92,11 +102,13 @@ def build_server(cfg: AppConfigLike) -> "FastMCP":
     @server.tool(
         description=(
             "Send a single email message through the configured SMTP submission "
-            "server. Use JSON arrays for to, cc, and bcc. Provide at least one "
-            "recipient in to and at least one of text_body or html_body."
+            "server for the selected account. Use an account name returned by "
+            "list_accounts, JSON arrays for to, cc, and bcc, at least one "
+            "recipient in to, and at least one of text_body or html_body."
         )
     )
     def send_email(
+        account: AccountName,
         to: RecipientList,
         subject: SubjectLine,
         text_body: TextBody = None,
@@ -105,6 +117,7 @@ def build_server(cfg: AppConfigLike) -> "FastMCP":
         bcc: OptionalRecipientList = None,
     ) -> dict[str, object]:
         result = app.send_email(
+            account=account,
             to=to,
             subject=subject,
             text_body=text_body,

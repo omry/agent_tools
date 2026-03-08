@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Send a single email through the deployment-configured SMTP submission path.
+Send a single email through the SMTP submission path configured for a selected account.
 
 ## Intended usage
 

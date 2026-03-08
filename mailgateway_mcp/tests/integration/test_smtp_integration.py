@@ -106,13 +106,13 @@ def _build_app(smtp_config: SmtpConfig) -> MailGatewayApp:
                 )
             }
         ),
-        smtp_config,
-        smtp_client=SmtpSubmissionClient(smtp_config),
+        smtp_client_factory=SmtpSubmissionClient,
     )
 
 
 def _send_test_message(app: MailGatewayApp) -> None:
     app.send_email(
+        account="primary",
         to=["to@example.com"],
         cc=["cc@example.com"],
         bcc=["bcc@example.com"],
@@ -206,6 +206,7 @@ def test_send_email_submits_to_plain_smtp_server(smtp_server_factory) -> None:
     app = _build_app(smtp_config)
 
     result = app.send_email(
+        account="primary",
         to=["to@example.com"],
         cc=["cc@example.com"],
         bcc=["bcc@example.com"],
@@ -232,6 +233,7 @@ def test_send_email_submits_html_only_message(smtp_server_factory) -> None:
     app = _build_app(smtp_config)
 
     result = app.send_email(
+        account="primary",
         to=["to@example.com"],
         subject="Integration Hello",
         html_body="<p>HTML only</p>",
@@ -270,6 +272,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name(
     app = _build_app(smtp_config)
 
     result = app.send_email(
+        account="primary",
         to=["to@example.com"],
         subject="Héllo ✓",
         text_body="Plain body",
