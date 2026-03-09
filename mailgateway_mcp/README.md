@@ -7,10 +7,12 @@ This directory contains the design and future implementation of a mail gateway M
 Run the test suite from the repo root with:
 
 - `python -m nox -s mailgateway_mcp`
+- `python -m nox -s lint`
 
 Or run the project-local noxfile from inside `mailgateway_mcp` with:
 
 - `python -m nox -s tests`
+- `python -m nox -s lint`
 
 The design is documented in the `docs/` structure used by the MCP server template:
 

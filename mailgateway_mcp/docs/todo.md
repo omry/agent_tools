@@ -12,14 +12,6 @@ Protocol:
 
 ## Items
 
-- Add mypy and a static type-checking test target
-  - Why: direct Python construction in tests can drift from the typed config contract without runtime failures
-  - Status: `todo`
-  - Steps:
-    1. Add `mypy` to the development toolchain.
-    2. Introduce a static test target alongside the existing automated test suite.
-    3. Fix existing type mismatches in tests and skill/runtime code as they are surfaced.
-
 - Refine account access policy beyond the current broad `read_only` flag
   - Why: the current `account_access_profiles` examples (`bot`, `personal`) are too coarse for future SMTP and IMAP capabilities
   - Status: `todo`

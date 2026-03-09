@@ -37,6 +37,7 @@ Repository = "https://github.com/omry/agent_tools"
 dev = [
   "nox>=2024.10,<2026.0",
   "aiosmtpd>=1.4.6,<2.0",
+  "mypy>=1.11,<2.0",
   "pytest>=7.4,<9.0",
   "trustme>=1.2,<2.0",
 ]
@@ -49,6 +50,11 @@ addopts = "--import-mode=importlib"
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -56,4 +62,5 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
+"mailgateway_mcp" = ["py.typed"]
 "mailgateway_mcp.conf" = ["*.yaml"]
