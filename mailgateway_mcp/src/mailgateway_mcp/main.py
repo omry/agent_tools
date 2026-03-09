@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal, cast
 
 import hydra
 from pydantic import Field
 
 from .app import MailGatewayApp
-from .config import AppConfigLike, register_configs
+from .config import AppConfig, register_configs
 from .smtp import SmtpSubmissionClient
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+
+TransportMode = Literal["stdio", "sse", "streamable-http"]
 
 
 RecipientList = Annotated[
@@ -67,14 +70,14 @@ HtmlBody = Annotated[
 ]
 
 
-def build_app(cfg: AppConfigLike) -> MailGatewayApp:
+def build_app(cfg: AppConfig) -> MailGatewayApp:
     return MailGatewayApp(
         cfg.mail,
         smtp_client_factory=SmtpSubmissionClient,
     )
 
 
-def build_server(cfg: AppConfigLike) -> "FastMCP":
+def build_server(cfg: AppConfig) -> "FastMCP":
     from mcp.server.fastmcp import FastMCP
 
     app = build_app(cfg)
@@ -138,9 +141,9 @@ register_configs()
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
-def _main(cfg: AppConfigLike) -> None:
+def _main(cfg: AppConfig) -> None:
     server = build_server(cfg)
-    server.run(transport=cfg.server.transport)
+    server.run(transport=cast(TransportMode, cfg.server.transport))
 
 
 def main() -> None:

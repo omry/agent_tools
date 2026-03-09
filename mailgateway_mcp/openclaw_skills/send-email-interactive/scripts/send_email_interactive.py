@@ -11,7 +11,11 @@ from typing import Any, Callable
 _SHARED_SCRIPTS = Path(__file__).resolve().parents[2] / "_shared" / "scripts"
 sys.path.insert(0, str(_SHARED_SCRIPTS))
 
-from mailgateway_mcp_client import call_tool_sync, config_from_env  # noqa: E402
+from mailgateway_mcp_client import (  # noqa: E402
+    MailGatewayClientConfig,
+    call_tool_sync,
+    config_from_env,
+)
 
 
 def _csv_list(value: str | None) -> list[str]:
@@ -91,7 +95,7 @@ def build_arguments_with_bodies(
     return arguments
 
 
-def list_smtp_accounts(config: object) -> list[dict[str, object]]:
+def list_smtp_accounts(config: MailGatewayClientConfig) -> list[dict[str, object]]:
     result = call_tool_sync(config, "list_accounts", {})
     accounts = result.get("accounts")
     if not isinstance(accounts, list):

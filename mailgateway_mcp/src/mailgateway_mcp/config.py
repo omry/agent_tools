@@ -177,7 +177,7 @@ class SmtpConfigLike(Protocol):
     password: str
     from_email: str
     from_name: str
-    tls: MailTlsMode | str
+    tls: MailTlsMode
     verify_peer: bool
     timeout_seconds: float
 
@@ -187,16 +187,16 @@ class ImapConfigLike(Protocol):
     port: int
     username: str
     password: str
-    tls: MailTlsMode | str
+    tls: MailTlsMode
     verify_peer: bool
     default_folder: str | None
-    folders: Mapping[str, object]
+    folders: Mapping[str, ImapFolderConfig]
 
 
 class AccountConfigLike(Protocol):
     description: str
     account_access_profile: str
-    sensitivity_tier: AccountSensitivityTier | str
+    sensitivity_tier: AccountSensitivityTier
     smtp: SmtpConfigLike | None
     imap: ImapConfigLike | None
 
@@ -247,14 +247,14 @@ def validate_smtp_config(config: SmtpConfigLike) -> None:
         )
 
 
-def validate_imap_config(config: ImapConfigLike) -> None:
+def validate_imap_config(config: ImapConfig) -> None:
     _coerce_tls_mode(config.tls, "imap config tls")
 
     if config.default_folder and config.default_folder not in config.folders:
         raise ValueError("imap config default_folder must match a configured folder")
 
 
-def validate_app_config(config: AppConfigLike) -> None:
+def validate_app_config(config: AppConfig) -> None:
     if not config.mail.accounts:
         raise ValueError("mail config requires at least one account")
 

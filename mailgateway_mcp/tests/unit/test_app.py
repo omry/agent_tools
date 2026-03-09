@@ -1,4 +1,5 @@
 import pytest
+from email.message import EmailMessage
 
 from mailgateway_mcp.app import MailGatewayApp
 from mailgateway_mcp.config import (
@@ -8,17 +9,23 @@ from mailgateway_mcp.config import (
     ImapConfig,
     ImapFolderConfig,
     MailConfig,
+    SmtpConfigLike,
     SmtpConfig,
 )
 
 
 class FakeSmtpClient:
     def __init__(self) -> None:
-        self.message = None
-        self.sender = None
-        self.recipients = None
+        self.message: EmailMessage | None = None
+        self.sender: str | None = None
+        self.recipients: list[str] | None = None
 
-    def send(self, message, sender: str, recipients: list[str]) -> None:
+    def send(
+        self,
+        message: EmailMessage,
+        sender: str,
+        recipients: list[str],
+    ) -> None:
         self.message = message
         self.sender = sender
         self.recipients = recipients
@@ -26,10 +33,10 @@ class FakeSmtpClient:
 
 class RecordingSmtpClientFactory:
     def __init__(self) -> None:
-        self.configs = []
+        self.configs: list[SmtpConfigLike] = []
         self.clients: list[FakeSmtpClient] = []
 
-    def __call__(self, config) -> FakeSmtpClient:
+    def __call__(self, config: SmtpConfigLike) -> FakeSmtpClient:
         self.configs.append(config)
         client = FakeSmtpClient()
         self.clients.append(client)
@@ -176,6 +183,9 @@ def test_send_email_submits_message_and_excludes_bcc_header() -> None:
     assert result.tool == "send_email"
     assert result.recipient_count == 3
     smtp_client = smtp_factory.clients[-1]
+    assert smtp_client.message is not None
+    assert smtp_client.sender is not None
+    assert smtp_client.recipients is not None
     assert smtp_client.sender == "agent@example.com"
     assert smtp_client.recipients == [
         "to@example.com",
@@ -215,6 +225,7 @@ def test_send_email_supports_html_only_body() -> None:
     )
 
     smtp_client = smtp_factory.clients[-1]
+    assert smtp_client.message is not None
     assert smtp_client.message.get_content_type() == "text/html"
     assert smtp_client.message.is_multipart() is False
     assert "<p>HTML only</p>" in smtp_client.message.get_content()
@@ -251,6 +262,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
     )
 
     smtp_client = smtp_factory.clients[-1]
+    assert smtp_client.message is not None
     assert smtp_client.message["From"] == "Jöhn Döe <agent@example.com>"
     assert smtp_client.message["Subject"] == "Héllo ✓"
 
@@ -316,6 +328,7 @@ def test_send_email_uses_selected_account_smtp_config() -> None:
     )
 
     smtp_client = smtp_factory.clients[-1]
+    assert smtp_client.message is not None
     assert smtp_factory.configs[-1].from_email == "alerts@example.com"
     assert smtp_client.sender == "alerts@example.com"
     assert smtp_client.message["From"] == "Alerts Sender <alerts@example.com>"

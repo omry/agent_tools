@@ -14,6 +14,7 @@ class SmtpSubmissionClient:
 
     def send(self, message: EmailMessage, sender: str, recipients: list[str]) -> None:
         ssl_context = self._build_ssl_context()
+        smtp_client: smtplib.SMTP | smtplib.SMTP_SSL
         if self._config.tls == "implicit":
             smtp_client = smtplib.SMTP_SSL(
                 self._config.host,

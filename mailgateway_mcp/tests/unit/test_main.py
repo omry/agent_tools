@@ -1,6 +1,8 @@
 import sys
+from collections.abc import Callable
 from types import ModuleType
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from omegaconf import OmegaConf
@@ -35,12 +37,12 @@ def test_build_app_list_accounts_uses_real_config_shape() -> None:
 
 
 def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
-    tools: dict[str, object] = {}
+    tools: dict[str, Callable[..., object]] = {}
     list_accounts_calls = 0
     send_email_calls: list[dict[str, object]] = []
 
     class FakeApp:
-        def list_accounts(self):
+        def list_accounts(self) -> list[dict[str, object]]:
             nonlocal list_accounts_calls
             list_accounts_calls += 1
             return [
@@ -64,7 +66,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
             html_body: str | None = None,
             cc: list[str] | None = None,
             bcc: list[str] | None = None,
-        ):
+        ) -> SimpleNamespace:
             send_email_calls.append(
                 {
                     "account": account,
@@ -93,14 +95,14 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
             self.stateless_http = stateless_http
             self.json_response = json_response
             self.settings = SimpleNamespace(
-                host=None,
-                port=None,
-                streamable_http_path=None,
+                host="",
+                port=0,
+                streamable_http_path="",
             )
-            self.run_transport = None
+            self.run_transport = ""
 
-        def tool(self, **kwargs):
-            def decorator(func):
+        def tool(self, **kwargs: object) -> Callable[[Callable[..., object]], Callable[..., object]]:
+            def decorator(func: Callable[..., object]) -> Callable[..., object]:
                 tools[func.__name__] = func
                 return func
 
@@ -110,7 +112,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
             self.run_transport = transport
 
     fastmcp_module = ModuleType("mcp.server.fastmcp")
-    fastmcp_module.FastMCP = FakeFastMCP
+    setattr(fastmcp_module, "FastMCP", FakeFastMCP)
     server_module = ModuleType("mcp.server")
     mcp_module = ModuleType("mcp")
 
@@ -121,7 +123,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
 
     cfg = OmegaConf.structured(AppConfig())
 
-    server = build_server(cfg)
+    server = cast(Any, build_server(cfg))
 
     assert server.name == "mailgateway-mcp"
     assert server.stateless_http is True
@@ -176,7 +178,7 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_build_server_describes_send_email_tool_schema() -> None:
-    server = build_server(OmegaConf.structured(AppConfig()))
+    server = cast(Any, build_server(OmegaConf.structured(AppConfig())))
 
     list_accounts_tool = server._tool_manager._tools["list_accounts"]
     assert "configured accounts available to the caller" in list_accounts_tool.description

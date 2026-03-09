@@ -4,21 +4,22 @@ import ssl
 from email.message import EmailMessage
 import smtplib
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
-from mailgateway_mcp.config import SmtpConfig
+from mailgateway_mcp.config import MailTlsMode, SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
 
 class FakeServer:
     def __init__(self) -> None:
-        self.starttls_context = None
-        self.sent_message = None
-        self.sent_from = None
-        self.sent_to = None
-        self.login_args = None
+        self.starttls_context: ssl.SSLContext | None = None
+        self.sent_message: EmailMessage | None = None
+        self.sent_from: str | None = None
+        self.sent_to: list[str] | None = None
+        self.login_args: tuple[str, str] | None = None
         self.ehlo_calls = 0
-        self.refused_recipients = {}
+        self.refused_recipients: dict[str, tuple[int, bytes]] = {}
 
     def __enter__(self) -> "FakeServer":
         return self
@@ -52,14 +53,14 @@ def _smtp_config(
     starttls: bool | None = None,
     use_ssl: bool | None = None,
     authenticate: bool | None = None,
-    **overrides,
+    **overrides: Any,
 ) -> SmtpConfig:
     if use_ssl:
-        tls = "implicit"
+        tls = MailTlsMode.implicit
     elif starttls is False:
-        tls = "none"
+        tls = MailTlsMode.none
     else:
-        tls = "starttls"
+        tls = MailTlsMode.starttls
 
     if authenticate is None:
         authenticate = bool(overrides.get("username"))
@@ -200,7 +201,11 @@ def test_send_propagates_authentication_errors(monkeypatch) -> None:
     def fake_login(username: str, password: str) -> None:
         raise smtplib.SMTPAuthenticationError(535, b"Authentication failed")
 
-    fake_server.login = fake_login
+    class FailingLoginServer(FakeServer):
+        def login(self, username: str, password: str) -> None:
+            fake_login(username, password)
+
+    fake_server = FailingLoginServer()
 
     def fake_smtp(host: str, port: int, timeout: float) -> FakeServer:
         return fake_server

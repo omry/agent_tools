@@ -1,6 +1,7 @@
 import pytest
 from hydra import compose, initialize_config_module
 from omegaconf import DictConfig
+from typing import Any, cast
 
 from mailgateway_mcp.config import (
     AccountConfig,
@@ -118,7 +119,7 @@ def test_smtp_config_rejects_credentials_when_auth_is_disabled(
 
 def test_smtp_config_rejects_unknown_tls_mode() -> None:
     with pytest.raises(ValueError, match="smtp config tls"):
-        SmtpConfig(tls="bogus")
+        SmtpConfig(tls=cast(Any, "bogus"))
 
 
 def test_imap_config_requires_default_folder_to_exist() -> None:

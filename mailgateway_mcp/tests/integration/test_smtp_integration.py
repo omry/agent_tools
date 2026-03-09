@@ -13,7 +13,7 @@ import pytest
 import trustme
 
 from mailgateway_mcp.app import MailGatewayApp
-from mailgateway_mcp.config import AccountConfig, MailConfig, SmtpConfig
+from mailgateway_mcp.config import AccountConfig, MailConfig, MailTlsMode, SmtpConfig
 from mailgateway_mcp.smtp import SmtpSubmissionClient
 
 
@@ -80,14 +80,14 @@ def _smtp_config(
     starttls: bool | None = None,
     use_ssl: bool | None = None,
     authenticate: bool | None = None,
-    **overrides,
+    **overrides: Any,
 ) -> SmtpConfig:
     if use_ssl:
-        tls = "implicit"
+        tls = MailTlsMode.implicit
     elif starttls is False:
-        tls = "none"
+        tls = MailTlsMode.none
     else:
-        tls = "starttls"
+        tls = MailTlsMode.starttls
 
     if authenticate is None:
         authenticate = bool(overrides.get("username"))

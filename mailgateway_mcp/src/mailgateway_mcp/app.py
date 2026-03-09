@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Callable, Protocol
 
-from .config import MailConfigLike, SmtpConfigLike
+from .config import MailConfig, SmtpConfigLike
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class MailGatewayApp:
 
     def __init__(
         self,
-        mail_config: MailConfigLike,
+        mail_config: MailConfig,
         smtp_client_factory: SmtpClientFactory,
     ) -> None:
         self._mail_config = mail_config
