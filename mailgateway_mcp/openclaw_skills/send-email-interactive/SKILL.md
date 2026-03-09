@@ -1,7 +1,12 @@
 ---
 name: send-email-interactive
 description: Use when a user is actively composing or sending an email through MailGateway. Gather recipients, subject, and body, apply the interactive confirmation rule, and submit through the local MailGateway MCP helper script.
-metadata: {"openclaw":{"requires":{"env":["MAILGATEWAY_MCP_URL"]},"homepage":"https://github.com/omry/agent_tools/tree/main/mailgateway_mcp/openclaw_skills"}}
+metadata:
+  openclaw:
+    requires:
+      env:
+        - MAILGATEWAY_MCP_URL
+    homepage: https://github.com/omry/agent_tools/tree/main/mailgateway_mcp/openclaw_skills
 ---
 
 # Send Email Interactive

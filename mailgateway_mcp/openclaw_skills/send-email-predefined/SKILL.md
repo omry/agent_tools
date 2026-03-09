@@ -1,7 +1,12 @@
 ---
 name: send-email-predefined
 description: Use for unattended or preapproved MailGateway sends driven by deployment-owned templates or profiles. Resolve a configured template, validate allowed parameters, and submit without a final confirmation step.
-metadata: {"openclaw":{"requires":{"env":["MAILGATEWAY_MCP_URL"]},"homepage":"https://github.com/omry/agent_tools/tree/main/mailgateway_mcp/openclaw_skills"}}
+metadata:
+  openclaw:
+    requires:
+      env:
+        - MAILGATEWAY_MCP_URL
+    homepage: https://github.com/omry/agent_tools/tree/main/mailgateway_mcp/openclaw_skills
 ---
 
 # Send Email Predefined

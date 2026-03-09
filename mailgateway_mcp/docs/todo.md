@@ -4,15 +4,13 @@
 
 Track agreed follow-up work that is not specific to tests.
 
-## Items
+Protocol:
 
-- Revalidate OpenClaw `SKILL.md` metadata format behavior
-  - Why: current runtime behavior appears to accept richer multiline metadata, while the docs claim `metadata` should be a single-line JSON object
-  - Status: `todo`
-  - Steps:
-    1. Re-test custom skill metadata parsing after the core OpenClaw MailGateway flow is working end to end.
-    2. Confirm whether multiline YAML metadata is fully supported or only partially tolerated.
-    3. Align the skill files with actual runtime behavior rather than the current documentation claim.
+- keep this file focused on open follow-up work
+- remove completed items instead of marking them `done`
+- capture durable findings in the relevant docs or code comments, not here
+
+## Items
 
 - Convert SMTP and IMAP TLS mode config values to enums
   - Why: `sensitivity_tier` now uses an OmegaConf-backed enum, while SMTP and IMAP TLS modes still use raw string sets
