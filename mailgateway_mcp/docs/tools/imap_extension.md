@@ -62,6 +62,22 @@ Access profiles establish default policy:
 
 When IMAP is added, write-capable behavior should still be controlled by `account_access_profile` policy and any future guardrails for sensitive accounts.
 
+Pending review:
+
+- replace the current coarse `read_only` profile flag with explicit IMAP policy gates for `read`, `search`, `move`, and `delete`
+- model IMAP flag access separately from content access
+- split IMAP flag policy into:
+  - `system_flags` for standard IMAP flags
+  - `user_flags` for custom keywords
+- use three flag modes for both groups:
+  - `hidden`
+  - `read_only`
+  - `mutate`
+- default unspecified `system_flags` to `read_only`
+- default unspecified `user_flags` to `hidden`
+- treat `mark_message_read` as a mutation of the standard `seen` system flag
+- treat bot-owned follow-up markers as explicit `user_flags` entries rather than implicit write access
+
 ## Audit behavior
 
 - apply durable IMAP audit behavior from `mail.account_access_profiles.<profile>.imap_audit`
@@ -79,3 +95,4 @@ When IMAP is added, write-capable behavior should still be controlled by `accoun
 
 - write one tool document per IMAP operation
 - decide what approval hook, if any, is required before connecting a personal account
+- review and accept or revise the split IMAP flag-policy proposal before changing the deployment config contract

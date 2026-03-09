@@ -17,8 +17,9 @@ Protocol:
   - Status: `todo`
   - Steps:
     1. Split policy by capability so SMTP and IMAP permissions can be controlled independently.
-    2. Define the minimum policy surface needed for planned IMAP features instead of overloading `read_only`.
-    3. Update config docs and examples once the finer-grained policy model is decided.
+    2. Review the documented split IMAP flag-policy proposal in `docs/policies.md` and `docs/tools/imap_extension.md`.
+    3. Decide whether to accept or revise the proposed `system_flags` / `user_flags` model before changing the config contract.
+    4. Update config docs and examples once the finer-grained policy model is accepted.
 
 - Add optional bot-signing behavior for personal-account sends
   - Why: when sending through a personal account, the operator may want the body to disclose that the bot drafted or sent the message

@@ -119,6 +119,60 @@ Before supporting a personal inbox, revisit at least these questions:
 - whether destructive IMAP operations should be disabled by default
 - what approval hook is required before supporting a personal inbox
 
+## Pending review: split IMAP flag policy
+
+The current `account_access_profile.read_only` model is too coarse for the planned IMAP tool family and for bot-managed follow-up state.
+
+The proposed replacement, pending review, is:
+
+- keep coarse protocol gates for:
+  - `smtp.allow_send`
+  - `imap.allow_read`
+  - `imap.allow_search`
+  - `imap.allow_move`
+  - `imap.allow_delete`
+- replace coarse IMAP write gating with two flag-policy groups:
+  - `system_flags`
+  - `user_flags`
+
+Shared flag modes:
+
+- `hidden`: do not expose the flag in tool-visible responses and do not allow mutation
+- `read_only`: expose the flag in tool-visible responses but do not allow mutation
+- `mutate`: expose the flag and allow mutation
+
+Proposed default behavior:
+
+- unspecified `system_flags` default to `read_only`
+- unspecified `user_flags` default to `hidden`
+
+Why split the flag policy:
+
+- standard IMAP system flags have stable semantics and are useful to the bot even when mutation is not allowed
+- custom user flags should stay opt-in because they may encode operator-specific or client-specific workflows
+- the bot may eventually use user flags such as a follow-up keyword, but that should require explicit configuration
+
+Proposed standard `system_flags` keys:
+
+- `seen`
+- `flagged`
+- `answered`
+- `deleted`
+- `draft`
+
+Proposed `user_flags` behavior:
+
+- keys are literal custom keyword strings
+- only listed keywords are visible to tools
+- only listed keywords may be mutated
+
+If this proposal is accepted, future IMAP tools should follow these rules:
+
+- content read/search permissions come from the coarse IMAP policy, not from flag policy
+- `mark_message_read` should require `system_flags.seen = mutate`
+- hidden flags should be omitted from tool-visible message responses
+- user-flag defaults should remain deny-by-default to avoid leaking workflow-specific state
+
 ## Security considerations
 
 - Store credentials outside source control.
