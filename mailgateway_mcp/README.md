@@ -14,6 +14,8 @@ Or run the project-local noxfile from inside `mailgateway_mcp` with:
 - `python -m nox -s tests`
 - `python -m nox -s lint`
 
+The `lint` session runs both `black --check` and the MailGateway `mypy` passes.
+
 The design is documented in the `docs/` structure used by the MCP server template:
 
 - [docs/overview.md](docs/overview.md)
