@@ -1,4 +1,4 @@
-Never run `git push --force` or `git push --force-with-lease` unless I explicitly request it in that turn.
+Never run `git push --force` or `git push --force-with-lease` unless I explicitly request it and then confirm again after you explain that it will rewrite remote history.
 Never run `git reset --hard` unless I explicitly request it in that turn.
 Before starting a new task or switching to unrelated work, check whether the git worktree is dirty.
 If the worktree is dirty but we are still iterating on the same feature, it is fine to keep going without committing.
