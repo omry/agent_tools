@@ -9,6 +9,7 @@ from mailgateway_mcp.config import (
     AppConfig,
     ImapConfig,
     ImapFolderConfig,
+    MailTlsMode,
     MailConfig,
     SmtpConfig,
     validate_app_config,
@@ -35,6 +36,7 @@ def test_compose_config_returns_hydra_config() -> None:
     assert cfg.mail.accounts.primary.smtp.port == 587
     assert cfg.mail.accounts.primary.smtp.from_email == "agent@example.com"
     assert cfg.mail.accounts.primary.sensitivity_tier == AccountSensitivityTier.standard
+    assert cfg.mail.accounts.primary.smtp.tls == MailTlsMode.starttls
     assert cfg.mail.accounts.primary.smtp.verify_peer is True
     assert cfg.mail.account_access_profiles.bot.read_only is False
 
@@ -47,6 +49,7 @@ def test_compose_config_applies_overrides() -> None:
             "mail.accounts.primary.smtp.host=smtp.example.com",
             "mail.accounts.primary.smtp.port=2525",
             "mail.accounts.primary.smtp.from_name=Agent Team",
+            "mail.accounts.primary.smtp.tls=implicit",
             "mail.accounts.primary.smtp.verify_peer=false",
         ]
     )
@@ -56,6 +59,7 @@ def test_compose_config_applies_overrides() -> None:
     assert cfg.mail.accounts.primary.smtp.host == "smtp.example.com"
     assert cfg.mail.accounts.primary.smtp.port == 2525
     assert cfg.mail.accounts.primary.smtp.from_name == "Agent Team"
+    assert cfg.mail.accounts.primary.smtp.tls == MailTlsMode.implicit
     assert cfg.mail.accounts.primary.smtp.verify_peer is False
 
 

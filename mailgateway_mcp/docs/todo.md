@@ -12,14 +12,6 @@ Protocol:
 
 ## Items
 
-- Convert SMTP and IMAP TLS mode config values to enums
-  - Why: `sensitivity_tier` now uses an OmegaConf-backed enum, while SMTP and IMAP TLS modes still use raw string sets
-  - Status: `todo`
-  - Steps:
-    1. Replace `_SMTP_TLS_MODES` and `_IMAP_TLS_MODES` string sets with enum-backed config fields.
-    2. Preserve lowercase operator-facing values if Hydra/OmegaConf allows it cleanly.
-    3. Update validation, docs, and override tests to match the enum-backed TLS modes.
-
 - Add mypy and a static type-checking test target
   - Why: direct Python construction in tests can drift from the typed config contract without runtime failures
   - Status: `todo`

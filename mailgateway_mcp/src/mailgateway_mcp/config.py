@@ -8,12 +8,15 @@ from typing import Protocol
 from hydra.core.config_store import ConfigStore
 
 
-_SMTP_TLS_MODES = {"none", "starttls", "implicit"}
-_IMAP_TLS_MODES = {"none", "starttls", "implicit"}
-
 class AccountSensitivityTier(str, Enum):
     standard = "standard"
     sensitive = "sensitive"
+
+
+class MailTlsMode(str, Enum):
+    none = "none"
+    starttls = "starttls"
+    implicit = "implicit"
 
 
 @dataclass
@@ -53,7 +56,7 @@ class SmtpConfig:
     password: str = ""
     from_email: str = "agent@example.com"
     from_name: str = "MailGateway"
-    tls: str = "starttls"
+    tls: MailTlsMode = MailTlsMode.starttls
     verify_peer: bool = True
     timeout_seconds: float = 30.0
     limits: SmtpLimitsConfig = field(default_factory=SmtpLimitsConfig)
@@ -63,6 +66,7 @@ class SmtpConfig:
     )
 
     def __post_init__(self) -> None:
+        self.tls = _coerce_tls_mode(self.tls, "smtp config tls")
         validate_smtp_config(self)
 
 
@@ -77,12 +81,13 @@ class ImapConfig:
     port: int = 993
     username: str = ""
     password: str = ""
-    tls: str = "implicit"
+    tls: MailTlsMode = MailTlsMode.implicit
     verify_peer: bool = True
     default_folder: str | None = None
     folders: dict[str, ImapFolderConfig] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        self.tls = _coerce_tls_mode(self.tls, "imap config tls")
         validate_imap_config(self)
 
 
@@ -172,7 +177,7 @@ class SmtpConfigLike(Protocol):
     password: str
     from_email: str
     from_name: str
-    tls: str
+    tls: MailTlsMode | str
     verify_peer: bool
     timeout_seconds: float
 
@@ -182,7 +187,7 @@ class ImapConfigLike(Protocol):
     port: int
     username: str
     password: str
-    tls: str
+    tls: MailTlsMode | str
     verify_peer: bool
     default_folder: str | None
     folders: Mapping[str, object]
@@ -210,11 +215,23 @@ class AppConfigLike(Protocol):
     mail: MailConfigLike
 
 
+def _coerce_tls_mode(value: MailTlsMode | str, context: str) -> MailTlsMode:
+    if isinstance(value, MailTlsMode):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return MailTlsMode(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"{context} must be one of: none, starttls, implicit"
+            ) from exc
+
+    raise ValueError(f"{context} must be one of: none, starttls, implicit")
+
+
 def validate_smtp_config(config: SmtpConfigLike) -> None:
-    if config.tls not in _SMTP_TLS_MODES:
-        raise ValueError(
-            "smtp config tls must be one of: none, starttls, implicit"
-        )
+    _coerce_tls_mode(config.tls, "smtp config tls")
 
     has_username = bool(config.username)
     has_password = bool(config.password)
@@ -231,10 +248,7 @@ def validate_smtp_config(config: SmtpConfigLike) -> None:
 
 
 def validate_imap_config(config: ImapConfigLike) -> None:
-    if config.tls not in _IMAP_TLS_MODES:
-        raise ValueError(
-            "imap config tls must be one of: none, starttls, implicit"
-        )
+    _coerce_tls_mode(config.tls, "imap config tls")
 
     if config.default_folder and config.default_folder not in config.folders:
         raise ValueError("imap config default_folder must match a configured folder")

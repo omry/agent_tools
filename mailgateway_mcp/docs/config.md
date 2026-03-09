@@ -110,7 +110,7 @@ mail:
 
 - `mail.accounts`: required mapping of configured accounts
 - `mail.accounts.<account>.description`: required human-readable account purpose
-- `mail.accounts.<account>.sensitivity_tier`: optional enum used by interactive callers to decide whether the selected account needs stricter confirmation; current values are `standard` and `sensitive`, default `standard`
+- `mail.accounts.<account>.sensitivity_tier`: optional; valid values: `standard`, `sensitive`; used by interactive callers to decide whether the selected account needs stricter confirmation; default `standard`
 - `mail.accounts.<account>.account_access_profile`: required reference to a profile under `mail.account_access_profiles`
 - `mail.account_access_profiles`: required mapping of account access profile definitions
 - `mail.account_access_profiles.bot.read_only`: required
@@ -125,7 +125,7 @@ Relevant SMTP settings for an account with SMTP enabled:
 - `mail.accounts.<account>.smtp.authenticate`: required
 - `mail.accounts.<account>.smtp.username`: optional
 - `mail.accounts.<account>.smtp.password`: optional secret
-- `mail.accounts.<account>.smtp.tls`: required enum: `none`, `starttls`, `implicit`
+- `mail.accounts.<account>.smtp.tls`: required; valid values: `none`, `starttls`, `implicit`
 - `mail.accounts.<account>.smtp.verify_peer`: required when TLS is enabled
 - `mail.accounts.<account>.smtp.from.email`: required
 - `mail.accounts.<account>.smtp.from.name`: optional
@@ -141,7 +141,7 @@ Relevant IMAP settings for an account with IMAP enabled:
 - `mail.accounts.<account>.imap.port`: required
 - `mail.accounts.<account>.imap.username`: optional
 - `mail.accounts.<account>.imap.password`: optional secret
-- `mail.accounts.<account>.imap.tls`: required enum
+- `mail.accounts.<account>.imap.tls`: required; valid values: `none`, `starttls`, `implicit`
 - `mail.accounts.<account>.imap.verify_peer`: required when TLS is enabled
 - `mail.accounts.<account>.imap.default_folder`: optional folder name used when a tool does not specify one
 - `mail.accounts.<account>.imap.folders`: required mapping keyed by folder name
@@ -157,7 +157,7 @@ Relevant IMAP settings for an account with IMAP enabled:
 - If `mail.accounts.<account>.smtp.tls` is configured, failure to establish the configured TLS mode must fail closed.
 - The `From` identity is server-owned and not caller-controlled in v1.
 - `Reply-To` is omitted or set to the same sender identity in v1.
-- `mail.accounts.<account>.sensitivity_tier` must be a supported enum value.
+- `mail.accounts.<account>.sensitivity_tier` must be one of the supported values: `standard`, `sensitive`.
 - `mail.accounts.<account>.account_access_profile` must match a key under `mail.account_access_profiles`.
 - If `mail.accounts.<account>.imap.default_folder` is set, it must match a key under `mail.accounts.<account>.imap.folders`.
 
