@@ -33,15 +33,41 @@ Use this when the caller needs to discover which accounts exist before selecting
       "description": "Bot-owned account for automated email tasks",
       "account_access_profile": "bot",
       "sensitivity_tier": "standard",
-      "smtp_enabled": true,
-      "imap_enabled": true,
-      "imap_read_only": false
+      "smtp": {
+        "send": "allowed"
+      },
+      "imap": {
+        "enabled": true,
+        "message": {
+          "read_allowed": true,
+          "move_allowed": true,
+          "delete_allowed": true,
+          "flags": {
+            "seen": "read_only",
+            "flagged": "read_write",
+            "answered": "read_only",
+            "deleted": "hidden",
+            "draft": "hidden",
+            "user": {
+              "bot.followed_up": "read_write"
+            }
+          }
+        }
+      }
     }
   ]
 }
 ```
 
-If `imap_enabled` is `false`, omit `imap_read_only`.
+Always return `smtp` and `imap` objects.
+
+`smtp.send` is a three-state enum:
+
+- `allowed`: SMTP is configured and this account may be used for `send_email`
+- `disabled`: SMTP is configured, but policy blocks sending from this account
+- `unavailable`: this account does not have SMTP configured
+
+If `imap.enabled` is `false`, `imap.message` is omitted.
 
 ## Operation details
 
@@ -51,12 +77,50 @@ Expected behavior:
 
 1. Read the configured account map.
 2. Construct the defined response shape from the configured accounts.
-3. Return stable account names and human-readable descriptions.
-4. Return the configured sensitivity tier for each account.
-   Current tiers are `standard` and `sensitive`.
-5. Indicate which protocols are enabled for each account.
-6. If `imap_enabled` is `true`, indicate whether IMAP access is read-only under the account's configured `account_access_profile`.
-7. If `imap_enabled` is `false`, omit `imap_read_only`.
+
+For each account, return these base fields:
+
+- stable account name
+- human-readable description
+- configured sensitivity tier
+  Current tiers are `standard` and `sensitive`.
+
+Return protocol capabilities under `smtp` and `imap`.
+
+### SMTP
+
+- always include `smtp.send`
+- `smtp.send` is the effective SMTP send state for the account:
+  - `allowed`: SMTP is configured and this account may be used for `send_email`
+  - `disabled`: SMTP is configured, but policy blocks sending from this account
+  - `unavailable`: this account does not have SMTP configured
+
+### IMAP
+
+- always include `imap.enabled`
+- when `imap.enabled` is `true`, return message capabilities under `imap.message`, including flag capabilities under `imap.message.flags`
+
+When `imap.enabled` is `false`, `imap.message` is omitted.
+
+Message capabilities:
+
+- `imap.message.read_allowed`
+- `imap.message.move_allowed`
+- `imap.message.delete_allowed`
+
+#### Flag Exposure
+
+`list_accounts` exposes the effective IMAP flag capabilities for the account.
+
+Under `imap.message.flags`:
+
+- all standard system flags are always returned, with their effective mode
+- system flags may be `hidden`, `read_only`, or `read_write`
+- a system flag may still be returned as `hidden` so callers know it will not appear in later tool-visible message data
+- `imap.message.flags.user` contains all explicitly configured user flags, with their effective mode
+- configured user flags may use `hidden`, `read_only`, or `read_write`
+- configured user flags with `hidden` are redundant and are not returned
+- unconfigured user flags are not returned and remain implicitly unavailable
 
 ## Policy checks
 
@@ -83,6 +147,10 @@ Expected behavior:
 
 - returns all configured accounts
 - returns the configured sensitivity tier for each account
-- omits `imap_read_only` when IMAP is not enabled on an account
+- returns hierarchical protocol capabilities under `smtp` and `imap`
+- returns `smtp.send` as `allowed`, `disabled`, or `unavailable`
+- omits `imap.message` when IMAP is not enabled on an account
+- exposes all standard IMAP system flags with their effective mode
+- exposes configured IMAP user flags with their effective mode
 - reflects the configured `account_access_profile`
 - does not expose transport, recipient policy, or audit configuration

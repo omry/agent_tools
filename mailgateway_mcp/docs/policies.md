@@ -119,14 +119,14 @@ Before supporting a personal inbox, revisit at least these questions:
 - whether destructive IMAP operations should be disabled by default
 - what approval hook is required before supporting a personal inbox
 
-## Pending review: split IMAP flag policy
+## Confirmed: split IMAP flag policy
 
-The current `account_access_profile.read_only` model is too coarse for the planned IMAP tool family and for bot-managed follow-up state.
+The current `account_access_profile.read_only` model is replaced by explicit protocol policy and split IMAP flag policy.
 
-The proposed replacement, pending review, is:
+The accepted replacement is:
 
 - keep coarse protocol gates for:
-  - `smtp.allow_send`
+  - `allow_smtp_send`
   - `imap.allow_read`
   - `imap.allow_search`
   - `imap.allow_move`
@@ -139,12 +139,12 @@ Shared flag modes:
 
 - `hidden`: do not expose the flag in tool-visible responses and do not allow mutation
 - `read_only`: expose the flag in tool-visible responses but do not allow mutation
-- `mutate`: expose the flag and allow mutation
+- `read_write`: expose the flag and allow mutation
 
-Proposed default behavior:
+Default behavior:
 
 - unspecified `system_flags` default to `read_only`
-- unspecified `user_flags` default to `hidden`
+- `user_flags` are opt-in and require explicit configuration
 
 Why split the flag policy:
 
@@ -152,7 +152,7 @@ Why split the flag policy:
 - custom user flags should stay opt-in because they may encode operator-specific or client-specific workflows
 - the bot may eventually use user flags such as a follow-up keyword, but that should require explicit configuration
 
-Proposed standard `system_flags` keys:
+Standard `system_flags` keys:
 
 - `seen`
 - `flagged`
@@ -160,16 +160,15 @@ Proposed standard `system_flags` keys:
 - `deleted`
 - `draft`
 
-Proposed `user_flags` behavior:
+`user_flags` behavior:
 
 - keys are literal custom keyword strings
 - only listed keywords are visible to tools
 - only listed keywords may be mutated
 
-If this proposal is accepted, future IMAP tools should follow these rules:
+Future IMAP tools should follow these rules:
 
 - content read/search permissions come from the coarse IMAP policy, not from flag policy
-- `mark_message_read` should require `system_flags.seen = mutate`
 - hidden flags should be omitted from tool-visible message responses
 - user-flag defaults should remain deny-by-default to avoid leaking workflow-specific state
 

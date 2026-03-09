@@ -173,7 +173,7 @@ def test_interactive_resolve_bodies_requires_body_when_no_stdin_or_args() -> Non
         )
 
 
-def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
+def test_interactive_list_smtp_accounts_filters_disallowed_smtp_entries() -> None:
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_accounts")
 
     def fake_call_tool_sync(config, tool_name, arguments):
@@ -183,12 +183,17 @@ def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
             "accounts": [
                 {
                     "name": "primary",
-                    "smtp_enabled": True,
+                    "smtp": {"send": "allowed"},
                     "sensitivity_tier": "standard",
                 },
                 {
                     "name": "personal",
-                    "smtp_enabled": False,
+                    "smtp": {"send": "unavailable"},
+                    "sensitivity_tier": "sensitive",
+                },
+                {
+                    "name": "secondary",
+                    "smtp": {"send": "disabled"},
                     "sensitivity_tier": "sensitive",
                 },
             ]
@@ -197,8 +202,39 @@ def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
     module.call_tool_sync = fake_call_tool_sync
 
     assert module.list_smtp_accounts(object()) == [
-        {"name": "primary", "smtp_enabled": True, "sensitivity_tier": "standard"}
+        {
+            "name": "primary",
+            "smtp": {"send": "allowed"},
+            "sensitivity_tier": "standard",
+        }
     ]
+
+
+def test_interactive_list_smtp_accounts_rejects_invalid_account_shapes() -> None:
+    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_invalid_accounts")
+
+    def fake_call_tool_sync(config, tool_name, arguments):
+        assert tool_name == "list_accounts"
+        assert arguments == {}
+        return {
+            "accounts": [
+                {
+                    "name": "primary",
+                    "smtp": {"send": "allowed"},
+                    "sensitivity_tier": "standard",
+                },
+                {
+                    "name": "broken",
+                    "smtp": "allowed",
+                    "sensitivity_tier": "standard",
+                },
+            ]
+        }
+
+    module.call_tool_sync = fake_call_tool_sync
+
+    with pytest.raises(ValueError, match="list_accounts returned an invalid response"):
+        module.list_smtp_accounts(object())
 
 
 def test_interactive_select_account_requires_explicit_choice_when_multiple_accounts() -> (

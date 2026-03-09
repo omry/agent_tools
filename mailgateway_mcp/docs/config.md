@@ -27,9 +27,8 @@ mail:
         password: ${oc.env: SMTP_PASSWORD}
         tls: starttls
         verify_peer: true
-        from:
-          email: bot@example.com
-          name: Bot
+        from_email: bot@example.com
+        from_name: Bot
         limits:
           max_messages_per_minute: 30
           max_recipients_per_message: 20
@@ -71,7 +70,21 @@ mail:
             description: Personal archive folder.
   account_access_profiles:
     bot:
-      read_only: false
+      # This example profile is intentionally permissive because the bot is
+      # operating on its own mailbox and may need to change message flags.
+      allow_smtp_send: true
+      imap:
+        allow_read: true
+        allow_search: true
+        allow_move: true
+        allow_delete: true
+        system_flags:
+          seen: read_write
+          flagged: read_write
+          answered: read_write
+          deleted: read_write
+          draft: read_write
+        user_flags: {}
       smtp_audit:
         enabled: true
         retention_days: 365
@@ -88,7 +101,20 @@ mail:
         audit_message_moves: true
         audit_message_deletes: true
     personal:
-      read_only: true
+      allow_smtp_send: true
+      imap:
+        allow_read: true
+        allow_search: true
+        allow_move: false
+        allow_delete: false
+        system_flags:
+          seen: read_only
+          flagged: read_only
+          answered: read_only
+          deleted: read_only
+          draft: read_only
+        user_flags:
+          bot.followed_up: read_write
       smtp_audit:
         enabled: true
         retention_days: 365
@@ -106,6 +132,19 @@ mail:
         audit_message_deletes: true
 ```
 
+In this illustrative example, the `bot` access profile is intentionally permissive for its own mailbox, so the standard IMAP system flags are configured as `read_write`.
+
+The access-profile schema is generic. Deployment config defines named profiles such as `bot` and `personal`, and accounts may reuse those profiles across multiple configured accounts. The example above shows recommended starting profiles for a bot-owned account and a more restricted personal account.
+
+Flag semantics:
+
+- `system_flags` controls standard IMAP flags such as `seen` and `flagged`
+- `user_flags` controls custom keywords such as `bot.followed_up`
+- `hidden` means do not expose the flag in tool-visible responses and do not allow mutation
+- `read_only` means expose the flag in tool-visible responses but do not allow mutation
+- `read_write` means expose the flag and allow mutation
+- unspecified `system_flags` default to `read_only`
+
 ## Relevant settings
 
 - `mail.accounts`: required mapping of configured accounts
@@ -113,8 +152,13 @@ mail:
 - `mail.accounts.<account>.sensitivity_tier`: optional; valid values: `standard`, `sensitive`; used by interactive callers to decide whether the selected account needs stricter confirmation; default `standard`
 - `mail.accounts.<account>.account_access_profile`: required reference to a profile under `mail.account_access_profiles`
 - `mail.account_access_profiles`: required mapping of account access profile definitions
-- `mail.account_access_profiles.bot.read_only`: required
-- `mail.account_access_profiles.personal.read_only`: required
+- `mail.account_access_profiles.<profile>.allow_smtp_send`: required; valid values: `true`, `false`
+- `mail.account_access_profiles.<profile>.imap.allow_read`: required; valid values: `true`, `false`
+- `mail.account_access_profiles.<profile>.imap.allow_search`: required; valid values: `true`, `false`
+- `mail.account_access_profiles.<profile>.imap.allow_move`: required; valid values: `true`, `false`
+- `mail.account_access_profiles.<profile>.imap.allow_delete`: required; valid values: `true`, `false`
+- `mail.account_access_profiles.<profile>.imap.system_flags.<flag>`: optional; valid values: `hidden`, `read_only`, `read_write`
+- `mail.account_access_profiles.<profile>.imap.user_flags.<keyword>`: optional; valid values: `hidden`, `read_only`, `read_write`
 - `mail.account_access_profiles.<profile>.smtp_audit`: required SMTP audit config for that profile
 - `mail.account_access_profiles.<profile>.imap_audit`: required IMAP audit config for that profile
 
@@ -160,6 +204,11 @@ Relevant IMAP settings for an account with IMAP enabled:
 - `mail.accounts.<account>.sensitivity_tier` must be one of the supported values: `standard`, `sensitive`.
 - `mail.accounts.<account>.account_access_profile` must match a key under `mail.account_access_profiles`.
 - If `mail.accounts.<account>.imap.default_folder` is set, it must match a key under `mail.accounts.<account>.imap.folders`.
+- `mail.account_access_profiles.<profile>.imap.allow_search` requires `mail.account_access_profiles.<profile>.imap.allow_read = true`.
+- `mail.account_access_profiles.<profile>.imap.allow_move` requires `mail.account_access_profiles.<profile>.imap.allow_read = true`.
+- `mail.account_access_profiles.<profile>.imap.allow_delete` requires `mail.account_access_profiles.<profile>.imap.allow_read = true`.
+- `mail.account_access_profiles.<profile>.imap.system_flags.<flag>` must be one of `hidden`, `read_only`, `read_write`.
+- `mail.account_access_profiles.<profile>.imap.user_flags.<keyword>` must be one of `hidden`, `read_only`, `read_write`.
 
 ## Secret handling
 

@@ -5,7 +5,13 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from typing import Callable, Protocol
 
-from .config import MailConfig, SmtpConfigLike
+from .config import (
+    AccountConfigLike,
+    ImapAccessPolicyConfig,
+    ImapFlagMode,
+    MailConfig,
+    SmtpConfigLike,
+)
 
 
 @dataclass(frozen=True)
@@ -42,20 +48,27 @@ class MailGatewayApp:
         summaries: list[dict[str, object]] = []
         for account_name in sorted(self._mail_config.accounts):
             account = self._mail_config.accounts[account_name]
-            imap_enabled = account.imap is not None
             profile = self._mail_config.account_access_profiles[
                 account.account_access_profile
             ]
+            smtp_send_state = self._smtp_send_state(account, profile.allow_smtp_send)
+            imap_enabled = account.imap is not None
+            smtp_summary: dict[str, object] = {
+                "send": smtp_send_state,
+            }
+            imap_summary: dict[str, object] = {
+                "enabled": imap_enabled,
+            }
             summary: dict[str, object] = {
                 "name": account_name,
                 "description": account.description,
                 "account_access_profile": account.account_access_profile,
                 "sensitivity_tier": account.sensitivity_tier.value,
-                "smtp_enabled": account.smtp is not None,
-                "imap_enabled": imap_enabled,
+                "smtp": smtp_summary,
+                "imap": imap_summary,
             }
             if imap_enabled:
-                summary["imap_read_only"] = profile.read_only
+                imap_summary["message"] = self._imap_message_summary(profile.imap)
             summaries.append(summary)
         return summaries
 
@@ -140,4 +153,54 @@ class MailGatewayApp:
                 f"send_email requires an SMTP-enabled account: {account_name}"
             )
 
+        profile = self._mail_config.account_access_profiles[
+            account.account_access_profile
+        ]
+        if not profile.allow_smtp_send:
+            raise ValueError(f"send_email is not allowed for account: {account_name}")
+
         return account.smtp
+
+    def _smtp_send_state(
+        self, account: AccountConfigLike, allow_smtp_send: bool
+    ) -> str:
+        if account.smtp is None:
+            return "unavailable"
+        if allow_smtp_send:
+            return "allowed"
+        return "disabled"
+
+    def _imap_message_summary(
+        self, imap_policy: ImapAccessPolicyConfig
+    ) -> dict[str, object]:
+        flags = self._imap_flag_summary(imap_policy)
+        return {
+            "read_allowed": imap_policy.allow_read,
+            "move_allowed": imap_policy.allow_move,
+            "delete_allowed": imap_policy.allow_delete,
+            "flags": flags,
+        }
+
+    def _imap_flag_summary(
+        self, imap_policy: ImapAccessPolicyConfig
+    ) -> dict[str, object]:
+        system_flags = {
+            "seen": imap_policy.system_flags.seen,
+            "flagged": imap_policy.system_flags.flagged,
+            "answered": imap_policy.system_flags.answered,
+            "deleted": imap_policy.system_flags.deleted,
+            "draft": imap_policy.system_flags.draft,
+        }
+        flags: dict[str, object] = {
+            flag_name: mode.value for flag_name, mode in system_flags.items()
+        }
+
+        user_flags = {
+            flag_name: mode.value
+            for flag_name, mode in sorted(imap_policy.user_flags.items())
+            if mode is not ImapFlagMode.hidden
+        }
+        if user_flags:
+            flags["user"] = user_flags
+
+        return flags

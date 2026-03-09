@@ -19,6 +19,12 @@ class MailTlsMode(str, Enum):
     implicit = "implicit"
 
 
+class ImapFlagMode(str, Enum):
+    hidden = "hidden"
+    read_only = "read_only"
+    read_write = "read_write"
+
+
 @dataclass
 class ServerConfig:
     name: str = "mailgateway-mcp"
@@ -113,8 +119,46 @@ class ImapAuditConfig:
 
 
 @dataclass
+class ImapSystemFlagsPolicyConfig:
+    seen: ImapFlagMode = ImapFlagMode.read_only
+    flagged: ImapFlagMode = ImapFlagMode.read_only
+    answered: ImapFlagMode = ImapFlagMode.read_only
+    deleted: ImapFlagMode = ImapFlagMode.read_only
+    draft: ImapFlagMode = ImapFlagMode.read_only
+
+    def __post_init__(self) -> None:
+        self.seen = _coerce_imap_flag_mode(self.seen, "imap system_flags.seen")
+        self.flagged = _coerce_imap_flag_mode(self.flagged, "imap system_flags.flagged")
+        self.answered = _coerce_imap_flag_mode(
+            self.answered, "imap system_flags.answered"
+        )
+        self.deleted = _coerce_imap_flag_mode(self.deleted, "imap system_flags.deleted")
+        self.draft = _coerce_imap_flag_mode(self.draft, "imap system_flags.draft")
+
+
+@dataclass
+class ImapAccessPolicyConfig:
+    allow_read: bool = True
+    allow_search: bool = True
+    allow_move: bool = True
+    allow_delete: bool = True
+    system_flags: ImapSystemFlagsPolicyConfig = field(
+        default_factory=ImapSystemFlagsPolicyConfig
+    )
+    user_flags: dict[str, ImapFlagMode] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.user_flags = {
+            flag: _coerce_imap_flag_mode(mode, f"imap user_flags.{flag}")
+            for flag, mode in self.user_flags.items()
+        }
+        validate_imap_access_policy(self)
+
+
+@dataclass
 class AccountAccessProfileConfig:
-    read_only: bool = False
+    allow_smtp_send: bool = True
+    imap: ImapAccessPolicyConfig = field(default_factory=ImapAccessPolicyConfig)
     smtp_audit: SmtpAuditConfig = field(default_factory=SmtpAuditConfig)
     imap_audit: ImapAuditConfig = field(default_factory=ImapAuditConfig)
 
@@ -202,7 +246,25 @@ class AccountConfigLike(Protocol):
 
 
 class AccountAccessProfileConfigLike(Protocol):
-    read_only: bool
+    allow_smtp_send: bool
+    imap: "ImapAccessPolicyConfigLike"
+
+
+class ImapSystemFlagsPolicyConfigLike(Protocol):
+    seen: ImapFlagMode
+    flagged: ImapFlagMode
+    answered: ImapFlagMode
+    deleted: ImapFlagMode
+    draft: ImapFlagMode
+
+
+class ImapAccessPolicyConfigLike(Protocol):
+    allow_read: bool
+    allow_search: bool
+    allow_move: bool
+    allow_delete: bool
+    system_flags: ImapSystemFlagsPolicyConfigLike
+    user_flags: Mapping[str, ImapFlagMode]
 
 
 class MailConfigLike(Protocol):
@@ -213,6 +275,15 @@ class MailConfigLike(Protocol):
 class AppConfigLike(Protocol):
     server: ServerConfigLike
     mail: MailConfigLike
+
+
+SYSTEM_FLAG_NAME_MAP = {
+    "\\Seen": "seen",
+    "\\Flagged": "flagged",
+    "\\Answered": "answered",
+    "\\Deleted": "deleted",
+    "\\Draft": "draft",
+}
 
 
 def _coerce_tls_mode(value: MailTlsMode | str, context: str) -> MailTlsMode:
@@ -228,6 +299,21 @@ def _coerce_tls_mode(value: MailTlsMode | str, context: str) -> MailTlsMode:
             ) from exc
 
     raise ValueError(f"{context} must be one of: none, starttls, implicit")
+
+
+def _coerce_imap_flag_mode(value: ImapFlagMode | str, context: str) -> ImapFlagMode:
+    if isinstance(value, ImapFlagMode):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return ImapFlagMode(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"{context} must be one of: hidden, read_only, read_write"
+            ) from exc
+
+    raise ValueError(f"{context} must be one of: hidden, read_only, read_write")
 
 
 def validate_smtp_config(config: SmtpConfigLike) -> None:
@@ -254,12 +340,50 @@ def validate_imap_config(config: ImapConfig) -> None:
         raise ValueError("imap config default_folder must match a configured folder")
 
 
+def validate_imap_access_policy(config: ImapAccessPolicyConfig) -> None:
+    if config.allow_search and not config.allow_read:
+        raise ValueError("imap access policy allow_search requires allow_read")
+
+    if config.allow_move and not config.allow_read:
+        raise ValueError("imap access policy allow_move requires allow_read")
+
+    if config.allow_delete and not config.allow_read:
+        raise ValueError("imap access policy allow_delete requires allow_read")
+
+
+def resolve_system_flag_key(flag_name: str) -> str | None:
+    return SYSTEM_FLAG_NAME_MAP.get(flag_name)
+
+
+def resolve_imap_flag_mode(
+    policy: ImapAccessPolicyConfig,
+    flag_name: str,
+) -> ImapFlagMode:
+    system_flag_key = resolve_system_flag_key(flag_name)
+    if system_flag_key == "seen":
+        return policy.system_flags.seen
+    if system_flag_key == "flagged":
+        return policy.system_flags.flagged
+    if system_flag_key == "answered":
+        return policy.system_flags.answered
+    if system_flag_key == "deleted":
+        return policy.system_flags.deleted
+    if system_flag_key == "draft":
+        return policy.system_flags.draft
+    if flag_name.startswith("\\"):
+        return ImapFlagMode.read_only
+    return policy.user_flags.get(flag_name, ImapFlagMode.hidden)
+
+
 def validate_app_config(config: AppConfig) -> None:
     if not config.mail.accounts:
         raise ValueError("mail config requires at least one account")
 
     if not config.mail.account_access_profiles:
         raise ValueError("mail config requires at least one account access profile")
+
+    for profile in config.mail.account_access_profiles.values():
+        validate_imap_access_policy(profile.imap)
 
     for account_name, account in config.mail.accounts.items():
         if account.account_access_profile not in config.mail.account_access_profiles:

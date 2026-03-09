@@ -30,8 +30,12 @@ def test_build_app_list_accounts_uses_real_config_shape() -> None:
             "description": "Bot-owned account for automated email tasks.",
             "account_access_profile": "bot",
             "sensitivity_tier": "standard",
-            "smtp_enabled": True,
-            "imap_enabled": False,
+            "smtp": {
+                "send": "allowed",
+            },
+            "imap": {
+                "enabled": False,
+            },
         }
     ]
 
@@ -51,8 +55,12 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
                     "description": "Primary account",
                     "account_access_profile": "bot",
                     "sensitivity_tier": "standard",
-                    "smtp_enabled": True,
-                    "imap_enabled": False,
+                    "smtp": {
+                        "send": "allowed",
+                    },
+                    "imap": {
+                        "enabled": False,
+                    },
                 }
             ]
 
@@ -145,8 +153,12 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
                 "description": "Primary account",
                 "account_access_profile": "bot",
                 "sensitivity_tier": "standard",
-                "smtp_enabled": True,
-                "imap_enabled": False,
+                "smtp": {
+                    "send": "allowed",
+                },
+                "imap": {
+                    "enabled": False,
+                },
             }
         ]
     }

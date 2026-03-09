@@ -6,8 +6,11 @@ from mailgateway_mcp.config import (
     AccountAccessProfileConfig,
     AccountConfig,
     AccountSensitivityTier,
+    ImapAccessPolicyConfig,
     ImapConfig,
+    ImapFlagMode,
     ImapFolderConfig,
+    ImapSystemFlagsPolicyConfig,
     MailConfig,
     SmtpConfigLike,
     SmtpConfig,
@@ -62,8 +65,13 @@ def _mail_config() -> MailConfig:
             ),
         },
         account_access_profiles={
-            "bot": AccountAccessProfileConfig(read_only=False),
-            "personal": AccountAccessProfileConfig(read_only=True),
+            "bot": AccountAccessProfileConfig(),
+            "personal": AccountAccessProfileConfig(
+                imap=ImapAccessPolicyConfig(
+                    allow_move=False,
+                    allow_delete=False,
+                )
+            ),
         },
     )
 
@@ -87,17 +95,36 @@ def test_list_accounts_returns_normalized_account_summaries() -> None:
             "description": "Personal IMAP account",
             "account_access_profile": "personal",
             "sensitivity_tier": "sensitive",
-            "smtp_enabled": False,
-            "imap_enabled": True,
-            "imap_read_only": True,
+            "smtp": {
+                "send": "unavailable",
+            },
+            "imap": {
+                "enabled": True,
+                "message": {
+                    "read_allowed": True,
+                    "move_allowed": False,
+                    "delete_allowed": False,
+                    "flags": {
+                        "seen": "read_only",
+                        "flagged": "read_only",
+                        "answered": "read_only",
+                        "deleted": "read_only",
+                        "draft": "read_only",
+                    },
+                },
+            },
         },
         {
             "name": "primary",
             "description": "Primary SMTP account",
             "account_access_profile": "bot",
             "sensitivity_tier": "standard",
-            "smtp_enabled": True,
-            "imap_enabled": False,
+            "smtp": {
+                "send": "allowed",
+            },
+            "imap": {
+                "enabled": False,
+            },
         },
     ]
 
@@ -116,7 +143,7 @@ def test_list_accounts_reports_writable_imap_account() -> None:
             )
         },
         account_access_profiles={
-            "bot": AccountAccessProfileConfig(read_only=False),
+            "bot": AccountAccessProfileConfig(),
         },
     )
     app = MailGatewayApp(
@@ -129,9 +156,24 @@ def test_list_accounts_reports_writable_imap_account() -> None:
             "description": "Alerts account",
             "account_access_profile": "bot",
             "sensitivity_tier": "standard",
-            "smtp_enabled": False,
-            "imap_enabled": True,
-            "imap_read_only": False,
+            "smtp": {
+                "send": "unavailable",
+            },
+            "imap": {
+                "enabled": True,
+                "message": {
+                    "read_allowed": True,
+                    "move_allowed": True,
+                    "delete_allowed": True,
+                    "flags": {
+                        "seen": "read_only",
+                        "flagged": "read_only",
+                        "answered": "read_only",
+                        "deleted": "read_only",
+                        "draft": "read_only",
+                    },
+                },
+            },
         }
     ]
 
@@ -151,7 +193,7 @@ def test_list_accounts_reports_account_with_both_protocols() -> None:
             )
         },
         account_access_profiles={
-            "bot": AccountAccessProfileConfig(read_only=False),
+            "bot": AccountAccessProfileConfig(),
         },
     )
     app = MailGatewayApp(
@@ -164,9 +206,179 @@ def test_list_accounts_reports_account_with_both_protocols() -> None:
             "description": "Primary full account",
             "account_access_profile": "bot",
             "sensitivity_tier": "standard",
-            "smtp_enabled": True,
-            "imap_enabled": True,
-            "imap_read_only": False,
+            "smtp": {
+                "send": "allowed",
+            },
+            "imap": {
+                "enabled": True,
+                "message": {
+                    "read_allowed": True,
+                    "move_allowed": True,
+                    "delete_allowed": True,
+                    "flags": {
+                        "seen": "read_only",
+                        "flagged": "read_only",
+                        "answered": "read_only",
+                        "deleted": "read_only",
+                        "draft": "read_only",
+                    },
+                },
+            },
+        }
+    ]
+
+
+def test_list_accounts_reports_configured_user_flag_access() -> None:
+    mail_config = MailConfig(
+        accounts={
+            "personal": AccountConfig(
+                description="Personal account",
+                account_access_profile="personal",
+                sensitivity_tier=AccountSensitivityTier.sensitive,
+                imap=ImapConfig(
+                    default_folder="INBOX",
+                    folders={"INBOX": ImapFolderConfig(description="Inbox")},
+                ),
+            )
+        },
+        account_access_profiles={
+            "personal": AccountAccessProfileConfig(
+                imap=ImapAccessPolicyConfig(
+                    allow_move=False,
+                    allow_delete=False,
+                    user_flags={
+                        "bot.followed_up": ImapFlagMode.read_write,
+                        "triaged": ImapFlagMode.read_only,
+                        "internal_only": ImapFlagMode.hidden,
+                    },
+                )
+            ),
+        },
+    )
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
+
+    assert app.list_accounts() == [
+        {
+            "name": "personal",
+            "description": "Personal account",
+            "account_access_profile": "personal",
+            "sensitivity_tier": "sensitive",
+            "smtp": {
+                "send": "unavailable",
+            },
+            "imap": {
+                "enabled": True,
+                "message": {
+                    "read_allowed": True,
+                    "move_allowed": False,
+                    "delete_allowed": False,
+                    "flags": {
+                        "seen": "read_only",
+                        "flagged": "read_only",
+                        "answered": "read_only",
+                        "deleted": "read_only",
+                        "draft": "read_only",
+                        "user": {
+                            "bot.followed_up": "read_write",
+                            "triaged": "read_only",
+                        },
+                    },
+                },
+            },
+        }
+    ]
+
+
+def test_list_accounts_reports_all_system_flags() -> None:
+    mail_config = MailConfig(
+        accounts={
+            "personal": AccountConfig(
+                description="Personal account",
+                account_access_profile="personal",
+                sensitivity_tier=AccountSensitivityTier.sensitive,
+                imap=ImapConfig(
+                    default_folder="INBOX",
+                    folders={"INBOX": ImapFolderConfig(description="Inbox")},
+                ),
+            )
+        },
+        account_access_profiles={
+            "personal": AccountAccessProfileConfig(
+                imap=ImapAccessPolicyConfig(
+                    allow_move=False,
+                    allow_delete=False,
+                    system_flags=ImapSystemFlagsPolicyConfig(
+                        seen=ImapFlagMode.read_write,
+                        flagged=ImapFlagMode.read_write,
+                        deleted=ImapFlagMode.hidden,
+                    ),
+                )
+            ),
+        },
+    )
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
+
+    assert app.list_accounts() == [
+        {
+            "name": "personal",
+            "description": "Personal account",
+            "account_access_profile": "personal",
+            "sensitivity_tier": "sensitive",
+            "smtp": {
+                "send": "unavailable",
+            },
+            "imap": {
+                "enabled": True,
+                "message": {
+                    "read_allowed": True,
+                    "move_allowed": False,
+                    "delete_allowed": False,
+                    "flags": {
+                        "seen": "read_write",
+                        "flagged": "read_write",
+                        "answered": "read_only",
+                        "deleted": "hidden",
+                        "draft": "read_only",
+                    },
+                },
+            },
+        }
+    ]
+
+
+def test_list_accounts_reports_disabled_smtp_account() -> None:
+    mail_config = MailConfig(
+        accounts={
+            "secondary": AccountConfig(
+                description="Secondary SMTP account",
+                account_access_profile="personal",
+                smtp=SmtpConfig(),
+            )
+        },
+        account_access_profiles={
+            "personal": AccountAccessProfileConfig(allow_smtp_send=False),
+        },
+    )
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
+
+    assert app.list_accounts() == [
+        {
+            "name": "secondary",
+            "description": "Secondary SMTP account",
+            "account_access_profile": "personal",
+            "sensitivity_tier": "standard",
+            "smtp": {
+                "send": "disabled",
+            },
+            "imap": {
+                "enabled": False,
+            },
         }
     ]
 
@@ -256,7 +468,7 @@ def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
             ),
         },
         account_access_profiles={
-            "bot": AccountAccessProfileConfig(read_only=False),
+            "bot": AccountAccessProfileConfig(),
         },
     )
     app = MailGatewayApp(
@@ -305,6 +517,32 @@ def test_send_email_rejects_imap_only_account() -> None:
         )
 
 
+def test_send_email_rejects_account_with_disabled_send_policy() -> None:
+    mail_config = MailConfig(
+        accounts={
+            "primary": AccountConfig(
+                description="Primary SMTP account",
+                account_access_profile="bot",
+                smtp=SmtpConfig(),
+            )
+        },
+        account_access_profiles={
+            "bot": AccountAccessProfileConfig(allow_smtp_send=False)
+        },
+    )
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
+
+    with pytest.raises(ValueError, match="not allowed for account: primary"):
+        app.send_email(
+            account="primary",
+            to=["to@example.com"],
+            subject="Hello",
+            text_body="Plain text body",
+        )
+
+
 def test_send_email_uses_selected_account_smtp_config() -> None:
     smtp_factory = RecordingSmtpClientFactory()
     mail_config = MailConfig(
@@ -329,7 +567,7 @@ def test_send_email_uses_selected_account_smtp_config() -> None:
             ),
         },
         account_access_profiles={
-            "bot": AccountAccessProfileConfig(read_only=False),
+            "bot": AccountAccessProfileConfig(),
         },
     )
     app = MailGatewayApp(mail_config, smtp_client_factory=smtp_factory)

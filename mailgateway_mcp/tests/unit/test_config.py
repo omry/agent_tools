@@ -8,10 +8,13 @@ from mailgateway_mcp.config import (
     AccountAccessProfileConfig,
     AccountSensitivityTier,
     AppConfig,
+    ImapAccessPolicyConfig,
     ImapConfig,
+    ImapFlagMode,
     ImapFolderConfig,
     MailTlsMode,
     MailConfig,
+    resolve_imap_flag_mode,
     SmtpConfig,
     validate_app_config,
     register_configs,
@@ -41,7 +44,15 @@ def test_compose_config_returns_hydra_config() -> None:
     assert cfg.mail.accounts.primary.sensitivity_tier == AccountSensitivityTier.standard
     assert cfg.mail.accounts.primary.smtp.tls == MailTlsMode.starttls
     assert cfg.mail.accounts.primary.smtp.verify_peer is True
-    assert cfg.mail.account_access_profiles.bot.read_only is False
+    assert cfg.mail.account_access_profiles.bot.allow_smtp_send is True
+    assert cfg.mail.account_access_profiles.bot.imap.allow_read is True
+    assert cfg.mail.account_access_profiles.bot.imap.allow_search is True
+    assert cfg.mail.account_access_profiles.bot.imap.allow_move is True
+    assert cfg.mail.account_access_profiles.bot.imap.allow_delete is True
+    assert (
+        cfg.mail.account_access_profiles.bot.imap.system_flags.seen
+        == ImapFlagMode.read_write
+    )
 
 
 def test_compose_config_applies_overrides() -> None:
@@ -54,6 +65,8 @@ def test_compose_config_applies_overrides() -> None:
             "mail.accounts.primary.smtp.from_name=Agent Team",
             "mail.accounts.primary.smtp.tls=implicit",
             "mail.accounts.primary.smtp.verify_peer=false",
+            "mail.account_access_profiles.bot.allow_smtp_send=false",
+            "mail.account_access_profiles.bot.imap.system_flags.seen=read_write",
         ]
     )
 
@@ -64,6 +77,11 @@ def test_compose_config_applies_overrides() -> None:
     assert cfg.mail.accounts.primary.smtp.from_name == "Agent Team"
     assert cfg.mail.accounts.primary.smtp.tls == MailTlsMode.implicit
     assert cfg.mail.accounts.primary.smtp.verify_peer is False
+    assert cfg.mail.account_access_profiles.bot.allow_smtp_send is False
+    assert (
+        cfg.mail.account_access_profiles.bot.imap.system_flags.seen
+        == ImapFlagMode.read_write
+    )
 
 
 def test_hydra_config_preserves_lazy_interpolations() -> None:
@@ -134,6 +152,81 @@ def test_imap_config_requires_default_folder_to_exist() -> None:
         )
 
 
+def test_imap_access_policy_requires_read_for_search() -> None:
+    with pytest.raises(ValueError, match="allow_search requires allow_read"):
+        ImapAccessPolicyConfig(
+            allow_read=False,
+            allow_search=True,
+            allow_move=False,
+            allow_delete=False,
+        )
+
+
+def test_imap_access_policy_requires_read_for_move() -> None:
+    with pytest.raises(ValueError, match="allow_move requires allow_read"):
+        ImapAccessPolicyConfig(
+            allow_read=False,
+            allow_search=False,
+            allow_move=True,
+            allow_delete=False,
+        )
+
+
+def test_imap_access_policy_requires_read_for_delete() -> None:
+    with pytest.raises(ValueError, match="allow_delete requires allow_read"):
+        ImapAccessPolicyConfig(
+            allow_read=False,
+            allow_search=False,
+            allow_move=False,
+            allow_delete=True,
+        )
+
+
+def test_imap_access_policy_rejects_unknown_user_flag_mode() -> None:
+    with pytest.raises(ValueError, match="imap user_flags.bot.followed_up"):
+        ImapAccessPolicyConfig(user_flags={"bot.followed_up": cast(Any, "bogus")})
+
+
+def test_imap_access_policy_accepts_hidden_user_flag_mode_as_noop() -> None:
+    policy = ImapAccessPolicyConfig(user_flags={"bot.followed_up": ImapFlagMode.hidden})
+
+    assert policy.user_flags["bot.followed_up"] is ImapFlagMode.hidden
+
+
+def test_imap_access_policy_rejects_legacy_mutate_alias() -> None:
+    with pytest.raises(ValueError, match="imap user_flags.bot.followed_up"):
+        ImapAccessPolicyConfig(user_flags={"bot.followed_up": cast(Any, "mutate")})
+
+
+def test_resolve_imap_flag_mode_defaults_system_flags_to_read_only() -> None:
+    policy = ImapAccessPolicyConfig()
+
+    assert resolve_imap_flag_mode(policy, "\\Seen") is ImapFlagMode.read_only
+    assert resolve_imap_flag_mode(policy, "\\Recent") is ImapFlagMode.read_only
+
+
+def test_resolve_imap_flag_mode_defaults_user_flags_to_hidden() -> None:
+    policy = ImapAccessPolicyConfig()
+
+    assert resolve_imap_flag_mode(policy, "bot.followed_up") is ImapFlagMode.hidden
+
+
+def test_resolve_imap_flag_mode_returns_configured_user_flag_mode() -> None:
+    policy = ImapAccessPolicyConfig(
+        user_flags={"bot.followed_up": ImapFlagMode.read_write}
+    )
+
+    assert resolve_imap_flag_mode(policy, "bot.followed_up") is ImapFlagMode.read_write
+
+
+def test_resolve_imap_flag_mode_returns_explicit_hidden_user_flag_mode() -> None:
+    policy = ImapAccessPolicyConfig(
+        user_flags={"bot.followed_up": ImapFlagMode.hidden}
+    )
+
+    assert resolve_imap_flag_mode(policy, "bot.followed_up") is ImapFlagMode.hidden
+
+
 def test_app_config_rejects_account_without_any_protocols() -> None:
     with pytest.raises(ValueError, match="must enable smtp, imap, or both"):
         AppConfig(
@@ -202,6 +295,27 @@ def test_app_config_accepts_account_with_both_protocols() -> None:
                     )
                 },
                 account_access_profiles={"bot": AccountAccessProfileConfig()},
+            )
+        )
+    )
+
+
+def test_app_config_accepts_disabled_smtp_send_policy() -> None:
+    validate_app_config(
+        AppConfig(
+            mail=MailConfig(
+                accounts={
+                    "primary": AccountConfig(
+                        description="SMTP account",
+                        account_access_profile="bot",
+                        smtp=SmtpConfig(),
+                    )
+                },
+                account_access_profiles={
+                    "bot": AccountAccessProfileConfig(
+                        allow_smtp_send=False
+                    )
+                },
             )
         )
     )

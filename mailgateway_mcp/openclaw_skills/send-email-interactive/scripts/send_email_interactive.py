@@ -110,8 +110,11 @@ def list_smtp_accounts(config: MailGatewayClientConfig) -> list[dict[str, object
     smtp_accounts: list[dict[str, object]] = []
     for account in accounts:
         if not isinstance(account, dict):
-            continue
-        if account.get("smtp_enabled") is not True:
+            raise ValueError("list_accounts returned an invalid response")
+        smtp = account.get("smtp")
+        if not isinstance(smtp, dict):
+            raise ValueError("list_accounts returned an invalid response")
+        if smtp.get("send") != "allowed":
             continue
         smtp_accounts.append(account)
 
