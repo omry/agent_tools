@@ -112,8 +112,12 @@ def test_interactive_resolve_bodies_rejects_combining_stdin_with_body_args() -> 
         )
 
 
-def test_interactive_resolve_bodies_requires_explicit_stdin_flag_when_stdin_is_used() -> None:
-    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_missing_stdin_flag")
+def test_interactive_resolve_bodies_requires_explicit_stdin_flag_when_stdin_is_used() -> (
+    None
+):
+    module = _load_module(
+        INTERACTIVE_PATH, "interactive_skill_script_missing_stdin_flag"
+    )
 
     class Args:
         text_body = None
@@ -121,7 +125,9 @@ def test_interactive_resolve_bodies_requires_explicit_stdin_flag_when_stdin_is_u
         text_stdin = False
         html_stdin = False
 
-    with pytest.raises(ValueError, match="pass exactly one of --text-stdin or --html-stdin"):
+    with pytest.raises(
+        ValueError, match="pass exactly one of --text-stdin or --html-stdin"
+    ):
         module.resolve_bodies(
             Args(),
             stdin_text="Hello",
@@ -138,7 +144,9 @@ def test_interactive_resolve_bodies_rejects_both_stdin_flags() -> None:
         text_stdin = True
         html_stdin = True
 
-    with pytest.raises(ValueError, match="cannot use both --text-stdin and --html-stdin"):
+    with pytest.raises(
+        ValueError, match="cannot use both --text-stdin and --html-stdin"
+    ):
         module.resolve_bodies(
             Args(),
             stdin_text="Hello",
@@ -155,7 +163,9 @@ def test_interactive_resolve_bodies_requires_body_when_no_stdin_or_args() -> Non
         text_stdin = False
         html_stdin = False
 
-    with pytest.raises(ValueError, match="at least one of --text-body or --html-body is required"):
+    with pytest.raises(
+        ValueError, match="at least one of --text-body or --html-body is required"
+    ):
         module.resolve_bodies(
             Args(),
             stdin_text=None,
@@ -171,8 +181,16 @@ def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
         assert arguments == {}
         return {
             "accounts": [
-                {"name": "primary", "smtp_enabled": True, "sensitivity_tier": "standard"},
-                {"name": "personal", "smtp_enabled": False, "sensitivity_tier": "sensitive"},
+                {
+                    "name": "primary",
+                    "smtp_enabled": True,
+                    "sensitivity_tier": "standard",
+                },
+                {
+                    "name": "personal",
+                    "smtp_enabled": False,
+                    "sensitivity_tier": "sensitive",
+                },
             ]
         }
 
@@ -183,18 +201,28 @@ def test_interactive_list_smtp_accounts_filters_non_smtp_entries() -> None:
     ]
 
 
-def test_interactive_select_account_requires_explicit_choice_when_multiple_accounts() -> None:
+def test_interactive_select_account_requires_explicit_choice_when_multiple_accounts() -> (
+    None
+):
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_multi_accounts")
     accounts = [
         {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"},
-        {"name": "personal", "sensitivity_tier": "sensitive", "description": "Personal"},
+        {
+            "name": "personal",
+            "sensitivity_tier": "sensitive",
+            "description": "Personal",
+        },
     ]
 
-    with pytest.raises(ValueError, match="multiple SMTP-enabled accounts are available"):
+    with pytest.raises(
+        ValueError, match="multiple SMTP-enabled accounts are available"
+    ):
         module.select_account(None, accounts)
 
 
-def test_interactive_select_account_allows_single_smtp_account_without_explicit_choice() -> None:
+def test_interactive_select_account_allows_single_smtp_account_without_explicit_choice() -> (
+    None
+):
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_single_account")
     accounts = [
         {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"},
@@ -203,7 +231,9 @@ def test_interactive_select_account_allows_single_smtp_account_without_explicit_
     assert module.select_account(None, accounts) == accounts[0]
 
 
-def test_interactive_run_passes_selected_account(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_interactive_run_passes_selected_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_run_account")
 
     class Args:
@@ -263,7 +293,9 @@ def test_interactive_run_passes_selected_account(monkeypatch: pytest.MonkeyPatch
 def test_interactive_run_requires_confirmation_for_sensitive_account(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_sensitive_account")
+    module = _load_module(
+        INTERACTIVE_PATH, "interactive_skill_script_sensitive_account"
+    )
 
     class Args:
         list_accounts = False
@@ -283,11 +315,17 @@ def test_interactive_run_requires_confirmation_for_sensitive_account(
         module,
         "list_smtp_accounts",
         lambda config: [
-            {"name": "personal", "sensitivity_tier": "sensitive", "description": "Personal"}
+            {
+                "name": "personal",
+                "sensitivity_tier": "sensitive",
+                "description": "Personal",
+            }
         ],
     )
 
-    with pytest.raises(ValueError, match=r"selected account personal \(Personal\) is sensitive"):
+    with pytest.raises(
+        ValueError, match=r"selected account personal \(Personal\) is sensitive"
+    ):
         module.run(
             Args(),
             stdin_reader=lambda: "",
@@ -295,7 +333,9 @@ def test_interactive_run_requires_confirmation_for_sensitive_account(
         )
 
 
-def test_interactive_run_lists_accounts_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_interactive_run_lists_accounts_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_list_mode")
 
     class Args:
@@ -371,6 +411,7 @@ def test_predefined_build_payload_rejects_unexpected_params() -> None:
             {"title": "Disk Full", "summary": "bad"},
         )
 
+
 def test_predefined_build_payload_requires_account() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script_missing_account")
 
@@ -390,7 +431,9 @@ def test_predefined_build_payload_requires_account() -> None:
 def test_predefined_default_registry_path_points_next_to_skill() -> None:
     module = _load_module(PREDEFINED_PATH, "predefined_skill_script_registry_path")
 
-    assert module.default_registry_path() == PREDEFINED_PATH.parents[1] / "templates.json"
+    assert (
+        module.default_registry_path() == PREDEFINED_PATH.parents[1] / "templates.json"
+    )
 
 
 def test_shared_parse_json_argument_requires_object() -> None:

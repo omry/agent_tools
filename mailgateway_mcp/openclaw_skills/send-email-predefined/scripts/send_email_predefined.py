@@ -15,7 +15,11 @@ _SKILL_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_TEMPLATE_REGISTRY = _SKILL_ROOT / "templates.json"
 sys.path.insert(0, str(_SHARED_SCRIPTS))
 
-from mailgateway_mcp_client import call_tool_sync, config_from_env, parse_json_argument  # noqa: E402
+from mailgateway_mcp_client import (
+    call_tool_sync,
+    config_from_env,
+    parse_json_argument,
+)  # noqa: E402
 
 
 def _template_fields(value: Any) -> set[str]:
@@ -84,9 +88,7 @@ def build_payload(
             raise ValueError("allowed_params must be an array of strings")
         unexpected = sorted(set(params) - set(declared_allowed))
         if unexpected:
-            raise ValueError(
-                f"unexpected template parameters: {', '.join(unexpected)}"
-            )
+            raise ValueError(f"unexpected template parameters: {', '.join(unexpected)}")
 
     payload: dict[str, Any] = {
         "account": account,
@@ -126,16 +128,18 @@ def build_payload(
     )
     missing_params = sorted(field for field in used_fields if field not in params)
     if missing_params:
-        raise ValueError(
-            f"missing template parameters: {', '.join(missing_params)}"
-        )
+        raise ValueError(f"missing template parameters: {', '.join(missing_params)}")
 
     return payload
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Submit a predefined MailGateway send_email request.")
-    parser.add_argument("--template", required=True, help="Template name from the registry.")
+    parser = argparse.ArgumentParser(
+        description="Submit a predefined MailGateway send_email request."
+    )
+    parser.add_argument(
+        "--template", required=True, help="Template name from the registry."
+    )
     parser.add_argument(
         "--params-json",
         default="{}",

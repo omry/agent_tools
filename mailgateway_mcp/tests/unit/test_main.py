@@ -101,7 +101,9 @@ def test_build_server_registers_tools(monkeypatch: pytest.MonkeyPatch) -> None:
             )
             self.run_transport = ""
 
-        def tool(self, **kwargs: object) -> Callable[[Callable[..., object]], Callable[..., object]]:
+        def tool(
+            self, **kwargs: object
+        ) -> Callable[[Callable[..., object]], Callable[..., object]]:
             def decorator(func: Callable[..., object]) -> Callable[..., object]:
                 tools[func.__name__] = func
                 return func
@@ -181,7 +183,9 @@ def test_build_server_describes_send_email_tool_schema() -> None:
     server = cast(Any, build_server(OmegaConf.structured(AppConfig())))
 
     list_accounts_tool = server._tool_manager._tools["list_accounts"]
-    assert "configured accounts available to the caller" in list_accounts_tool.description
+    assert (
+        "configured accounts available to the caller" in list_accounts_tool.description
+    )
     assert list_accounts_tool.parameters["properties"] == {}
 
     send_email_tool = server._tool_manager._tools["send_email"]

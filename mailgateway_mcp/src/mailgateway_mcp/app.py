@@ -16,8 +16,9 @@ class SendEmailResult:
 
 
 class SmtpClientLike(Protocol):
-    def send(self, message: EmailMessage, sender: str, recipients: list[str]) -> None:
-        ...
+    def send(
+        self, message: EmailMessage, sender: str, recipients: list[str]
+    ) -> None: ...
 
 
 SmtpClientFactory = Callable[[SmtpConfigLike], SmtpClientLike]
@@ -110,8 +111,12 @@ class MailGatewayApp:
             recipient_count=len(envelope_recipients),
         )
 
-    def _normalize_recipients(self, field_name: str, recipients: list[str]) -> list[str]:
-        normalized = [recipient.strip() for recipient in recipients if recipient.strip()]
+    def _normalize_recipients(
+        self, field_name: str, recipients: list[str]
+    ) -> list[str]:
+        normalized = [
+            recipient.strip() for recipient in recipients if recipient.strip()
+        ]
         if field_name == "to" and not normalized:
             raise ValueError("send_email requires at least one recipient in to")
 
@@ -128,9 +133,7 @@ class MailGatewayApp:
     def _resolve_smtp_config(self, account_name: str) -> SmtpConfigLike:
         account = self._mail_config.accounts.get(account_name)
         if account is None:
-            raise ValueError(
-                f"send_email received an unknown account: {account_name}"
-            )
+            raise ValueError(f"send_email received an unknown account: {account_name}")
 
         if account.smtp is None:
             raise ValueError(

@@ -174,12 +174,12 @@ def smtp_server_factory(
             active_handler,
             hostname="127.0.0.1",
             port=free_tcp_port_factory(),
-            tls_context=_build_server_ssl_context(cert_path, key_path)
-            if starttls
-            else None,
-            ssl_context=_build_server_ssl_context(cert_path, key_path)
-            if use_ssl
-            else None,
+            tls_context=(
+                _build_server_ssl_context(cert_path, key_path) if starttls else None
+            ),
+            ssl_context=(
+                _build_server_ssl_context(cert_path, key_path) if use_ssl else None
+            ),
             **controller_kwargs,
         )
         controller.start()

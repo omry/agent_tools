@@ -39,7 +39,11 @@ def config_from_env() -> MailGatewayClientConfig:
         bearer_token=bearer_token,
         timeout_seconds=timeout_seconds,
     )
-def parse_json_argument(value: str | None, *, default: dict[str, Any] | None = None) -> dict[str, Any]:
+
+
+def parse_json_argument(
+    value: str | None, *, default: dict[str, Any] | None = None
+) -> dict[str, Any]:
     if value is None:
         return default or {}
 
@@ -86,7 +90,9 @@ async def call_tool(
             async with ClientSession(
                 read_stream,
                 write_stream,
-                client_info=Implementation(name="openclaw-mailgateway-skill", version="0.1.0"),
+                client_info=Implementation(
+                    name="openclaw-mailgateway-skill", version="0.1.0"
+                ),
             ) as session:
                 await session.initialize()
                 result = await session.call_tool(tool_name, arguments=arguments)
@@ -102,7 +108,9 @@ def call_tool_sync(
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Call a MailGateway MCP tool over Streamable HTTP.")
+    parser = argparse.ArgumentParser(
+        description="Call a MailGateway MCP tool over Streamable HTTP."
+    )
     parser.add_argument("tool_name", help="MailGateway MCP tool name.")
     parser.add_argument(
         "--arguments-json",

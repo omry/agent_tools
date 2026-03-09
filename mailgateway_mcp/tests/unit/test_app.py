@@ -69,13 +69,17 @@ def _mail_config() -> MailConfig:
 
 
 def test_tool_names_contains_list_accounts_and_send_email() -> None:
-    app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        _mail_config(), smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     assert app.tool_names() == ["list_accounts", "send_email"]
 
 
 def test_list_accounts_returns_normalized_account_summaries() -> None:
-    app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        _mail_config(), smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     assert app.list_accounts() == [
         {
@@ -115,7 +119,9 @@ def test_list_accounts_reports_writable_imap_account() -> None:
             "bot": AccountAccessProfileConfig(read_only=False),
         },
     )
-    app = MailGatewayApp(mail_config, smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     assert app.list_accounts() == [
         {
@@ -148,7 +154,9 @@ def test_list_accounts_reports_account_with_both_protocols() -> None:
             "bot": AccountAccessProfileConfig(read_only=False),
         },
     )
-    app = MailGatewayApp(mail_config, smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        mail_config, smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     assert app.list_accounts() == [
         {
@@ -200,7 +208,9 @@ def test_send_email_submits_message_and_excludes_bcc_header() -> None:
 
 
 def test_send_email_requires_body_content() -> None:
-    app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        _mail_config(), smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     with pytest.raises(ValueError, match="text_body or html_body"):
         app.send_email(
@@ -268,7 +278,9 @@ def test_send_email_preserves_non_ascii_subject_and_display_name() -> None:
 
 
 def test_send_email_rejects_unknown_account() -> None:
-    app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        _mail_config(), smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     with pytest.raises(ValueError, match="unknown account: missing"):
         app.send_email(
@@ -280,7 +292,9 @@ def test_send_email_rejects_unknown_account() -> None:
 
 
 def test_send_email_rejects_imap_only_account() -> None:
-    app = MailGatewayApp(_mail_config(), smtp_client_factory=lambda config: FakeSmtpClient())
+    app = MailGatewayApp(
+        _mail_config(), smtp_client_factory=lambda config: FakeSmtpClient()
+    )
 
     with pytest.raises(ValueError, match="SMTP-enabled account: personal"):
         app.send_email(

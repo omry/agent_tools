@@ -20,7 +20,9 @@ from mailgateway_mcp.config import (
 
 def _compose_config(overrides: list[str] | None = None) -> DictConfig:
     register_configs()
-    with initialize_config_module(version_base=None, config_module="mailgateway_mcp.conf"):
+    with initialize_config_module(
+        version_base=None, config_module="mailgateway_mcp.conf"
+    ):
         return compose(config_name="config", overrides=overrides or [])
 
 
@@ -65,7 +67,9 @@ def test_compose_config_applies_overrides() -> None:
 
 
 def test_hydra_config_preserves_lazy_interpolations() -> None:
-    app_config = _compose_config(["mail.accounts.primary.smtp.from_name=${server.name}"])
+    app_config = _compose_config(
+        ["mail.accounts.primary.smtp.from_name=${server.name}"]
+    )
 
     assert app_config.server.name == "mailgateway-mcp"
     assert app_config.mail.accounts.primary.smtp.from_name == "mailgateway-mcp"
@@ -141,8 +145,8 @@ def test_app_config_rejects_account_without_any_protocols() -> None:
                     )
                 },
                 account_access_profiles={"bot": AccountAccessProfileConfig()},
+            )
         )
-    )
 
 
 def test_app_config_accepts_smtp_only_account() -> None:

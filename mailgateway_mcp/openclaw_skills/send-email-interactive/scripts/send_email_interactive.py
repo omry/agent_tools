@@ -42,7 +42,9 @@ def resolve_bodies(
         if stdin_is_tty:
             raise ValueError("stdin body flag was provided but stdin is not available")
         if text_body is not None or html_body is not None:
-            raise ValueError("cannot combine stdin body input with --text-body or --html-body")
+            raise ValueError(
+                "cannot combine stdin body input with --text-body or --html-body"
+            )
 
         body_from_stdin = stdin_text if stdin_text is not None else ""
         if not body_from_stdin:
@@ -53,10 +55,14 @@ def resolve_bodies(
         return body_from_stdin, None
 
     if not stdin_is_tty:
-        raise ValueError("when using stdin body input, pass exactly one of --text-stdin or --html-stdin")
+        raise ValueError(
+            "when using stdin body input, pass exactly one of --text-stdin or --html-stdin"
+        )
 
     if text_body is None and html_body is None:
-        raise ValueError("at least one of --text-body or --html-body is required when stdin is not provided")
+        raise ValueError(
+            "at least one of --text-body or --html-body is required when stdin is not provided"
+        )
 
     return text_body, html_body
 
@@ -156,7 +162,9 @@ def select_account(
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Submit an interactive MailGateway send_email request.")
+    parser = argparse.ArgumentParser(
+        description="Submit an interactive MailGateway send_email request."
+    )
     parser.add_argument(
         "--list-accounts",
         action="store_true",
