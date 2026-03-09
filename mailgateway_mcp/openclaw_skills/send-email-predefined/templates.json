@@ -11,7 +11,7 @@
       "allowed_params": ["severity", "summary", "title"]
     },
     "personal-followup": {
-      "account": "omry",
+      "account": "personal",
       "subject": "Follow-up: {topic}",
       "text_body": "{body}",
       "to": ["{recipient}"],

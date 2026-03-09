@@ -70,7 +70,7 @@ Recommended split:
    The sample file includes:
 
    - `ops-alert`, which sends from the bot account (`primary`)
-   - `personal-followup`, which sends from the user account (`omry`)
+   - `personal-followup`, which sends from the user account (`personal`)
 
    You can add more templates to that file directly or ask OpenClaw to help edit it.
 

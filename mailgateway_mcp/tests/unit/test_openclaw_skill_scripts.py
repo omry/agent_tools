@@ -7,7 +7,7 @@ import sys
 import pytest
 
 
-REPO_ROOT = Path("/home/omry/dev/agent-tools")
+REPO_ROOT = Path(__file__).resolve().parents[3]
 INTERACTIVE_PATH = (
     REPO_ROOT
     / "mailgateway_mcp/openclaw_skills/send-email-interactive/scripts/send_email_interactive.py"
@@ -187,7 +187,7 @@ def test_interactive_select_account_requires_explicit_choice_when_multiple_accou
     module = _load_module(INTERACTIVE_PATH, "interactive_skill_script_multi_accounts")
     accounts = [
         {"name": "primary", "sensitivity_tier": "standard", "description": "Bot"},
-        {"name": "omry", "sensitivity_tier": "sensitive", "description": "Personal"},
+        {"name": "personal", "sensitivity_tier": "sensitive", "description": "Personal"},
     ]
 
     with pytest.raises(ValueError, match="multiple SMTP-enabled accounts are available"):
@@ -267,7 +267,7 @@ def test_interactive_run_requires_confirmation_for_sensitive_account(
 
     class Args:
         list_accounts = False
-        account = "omry"
+        account = "personal"
         to = "a@example.com"
         subject = "Hello"
         text_body = "Body"
@@ -283,11 +283,11 @@ def test_interactive_run_requires_confirmation_for_sensitive_account(
         module,
         "list_smtp_accounts",
         lambda config: [
-            {"name": "omry", "sensitivity_tier": "sensitive", "description": "Personal"}
+            {"name": "personal", "sensitivity_tier": "sensitive", "description": "Personal"}
         ],
     )
 
-    with pytest.raises(ValueError, match=r"selected account omry \(Personal\) is sensitive"):
+    with pytest.raises(ValueError, match=r"selected account personal \(Personal\) is sensitive"):
         module.run(
             Args(),
             stdin_reader=lambda: "",
