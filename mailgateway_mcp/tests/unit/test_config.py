@@ -220,9 +220,7 @@ def test_resolve_imap_flag_mode_returns_configured_user_flag_mode() -> None:
 
 
 def test_resolve_imap_flag_mode_returns_explicit_hidden_user_flag_mode() -> None:
-    policy = ImapAccessPolicyConfig(
-        user_flags={"bot.followed_up": ImapFlagMode.hidden}
-    )
+    policy = ImapAccessPolicyConfig(user_flags={"bot.followed_up": ImapFlagMode.hidden})
 
     assert resolve_imap_flag_mode(policy, "bot.followed_up") is ImapFlagMode.hidden
 
@@ -312,9 +310,7 @@ def test_app_config_accepts_disabled_smtp_send_policy() -> None:
                     )
                 },
                 account_access_profiles={
-                    "bot": AccountAccessProfileConfig(
-                        allow_smtp_send=False
-                    )
+                    "bot": AccountAccessProfileConfig(allow_smtp_send=False)
                 },
             )
         )

@@ -6,7 +6,7 @@ from email.utils import formataddr, make_msgid
 from typing import Callable, Protocol
 
 from .config import (
-    AccountConfigLike,
+    AccountConfig,
     ImapAccessPolicyConfig,
     ImapFlagMode,
     MailConfig,
@@ -161,9 +161,7 @@ class MailGatewayApp:
 
         return account.smtp
 
-    def _smtp_send_state(
-        self, account: AccountConfigLike, allow_smtp_send: bool
-    ) -> str:
+    def _smtp_send_state(self, account: AccountConfig, allow_smtp_send: bool) -> str:
         if account.smtp is None:
             return "unavailable"
         if allow_smtp_send:
